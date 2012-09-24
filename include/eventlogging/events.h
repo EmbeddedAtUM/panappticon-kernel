@@ -53,6 +53,18 @@ struct network_resume_event {
   struct event_hdr hdr;
 }__attribute__((packed));
 
+struct mutex_lock_event {
+  struct event_hdr hdr;
+  __le32 lock;
+}__attribute__((packed));
+
+struct mutex_wait_event {
+  struct event_hdr hdr;
+  __le32 lock;
+}__attribute__((packed));
+
+
+
 #ifdef __KERNEL__
 void event_log_header_init(struct event_hdr* event, u8 type);
 void event_log_simple(u8 event_type);
@@ -64,6 +76,8 @@ void event_log_stream_resume(void);
 void event_log_sock_block(void);
 void event_log_sock_resume(void);
 void event_log_fork(pid_t pid, pid_t tgid);
+void event_log_mutex_lock(void* lock);
+void event_log_mutex_wait(void* lock);
 #endif
 
 #endif
