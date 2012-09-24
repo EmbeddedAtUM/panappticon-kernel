@@ -28,9 +28,9 @@
 struct event_hdr {
   __u8  event_type;
   __u8  cpu;
+  __le16 pid;
   __le32 tv_sec;
   __le32 tv_usec;
-  __le16 pid;
 }__attribute__((packed));
 
 struct context_switch_event {
