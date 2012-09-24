@@ -25,6 +25,8 @@
 
 #define EVENT_MUTEX_LOCK 50
 #define EVENT_MUTEX_WAIT 51
+#define EVENT_MUTEX_WAKE 52
+#define EVENT_MUTEX_NOTIFY 53
 
 #define EVENT_IPC_LOCK 60
 #define EVENT_IPC_WAIT 11
@@ -72,6 +74,17 @@ struct mutex_wait_event {
   __le32 lock;
 }__attribute__((packed));
 
+struct mutex_wake_event {
+  struct event_hdr hdr;
+  __le32 lock;
+}__attribute__((packed));
+
+struct mutex_notify_event {
+  struct event_hdr hdr;
+  __le32 lock;
+  __le16 pid;
+}__attribute__((packed));
+
 struct sem_lock_event {
   struct event_hdr hdr;
   __le32 lock;
@@ -107,7 +120,9 @@ DEFINE_EVENT_LOG_FUNC(sock_block, void);
 DEFINE_EVENT_LOG_FUNC(sock_resume, void);
 DEFINE_EVENT_LOG_FUNC(fork, pid_t pid, pid_t tgid);
 DEFINE_EVENT_LOG_FUNC(mutex_lock, void* lock);
-DEFINE_EVENT_LOG_FUNC(mutex_wait, void* lock);;
+DEFINE_EVENT_LOG_FUNC(mutex_wait, void* lock);
+DEFINE_EVENT_LOG_FUNC(mutex_wake, void* lock);
+DEFINE_EVENT_LOG_FUNC(mutex_notify, void* lock, pid_t pid);
 DEFINE_EVENT_LOG_FUNC(sem_lock, void* lock);
 DEFINE_EVENT_LOG_FUNC(sem_wait, void* lock);
 DEFINE_EVENT_LOG_FUNC(io_block, void);
