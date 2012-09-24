@@ -41,7 +41,9 @@ inline static struct sbuffer* __get_cpu_buffer(void) {
 }
 
 static struct sbuffer* __flush_cpu_buffer(void) {
-  put_full(__get_cpu_var(sbuffers));
+  struct sbuffer* buf = __get_cpu_var(sbuffers);
+  if (NULL != buf)
+    put_full(buf);
   __get_cpu_var(sbuffers) = NULL;
   return __get_cpu_buffer();
 }
@@ -76,8 +78,11 @@ void log_event(void* data, int len) {
  * and 'cpu' offline.
  */
 static void __flush_offline_cpu_buffer(int cpu) {
+  struct sbuffer* buf = per_cpu(sbuffers, cpu);
   printk("eventlogging: flushing offline cpu: %d\n", cpu);
-  put_full(per_cpu(sbuffers, cpu));
+  if (NULL == buf)
+    return;
+  put_full(buf);
   per_cpu(sbuffers, cpu) = NULL;
 }
 
