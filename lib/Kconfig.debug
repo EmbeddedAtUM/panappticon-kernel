@@ -1109,6 +1109,7 @@ config SYSCTL_SYSCALL_CHECK
 
 source mm/Kconfig.debug
 source kernel/trace/Kconfig
+source kernel/eventlogging/Kconfig
 
 config PROVIDE_OHCI1394_DMA_INIT
 	bool "Remote debugging over FireWire early on boot"

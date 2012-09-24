@@ -1,0 +1,9 @@
+#
+# Event logging framework for Lide Zhang and David Bild.
+#
+#
+
+menuconfig EVENT_LOGGING
+        bool "Event Logging Zhang/Bild"
+        help
+          Event tracing framework for Lide Zhang and David Bild.
