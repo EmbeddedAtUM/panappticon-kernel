@@ -241,10 +241,11 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 		__set_task_state(task, state);
 
 		/* didn't get the lock, go to sleep: */
-		event_log_mutex_wait(lock);
 		spin_unlock_mutex(&lock->wait_lock, flags);
 		preempt_enable_no_resched();
+		event_log_mutex_wait(lock);
 		schedule();
+		event_log_mutex_wake(lock);
 		preempt_disable();
 		spin_lock_mutex(&lock->wait_lock, flags);
 	}
@@ -334,7 +335,7 @@ __mutex_unlock_common_slowpath(atomic_t *lock_count, int nested)
 					   struct mutex_waiter, list);
 
 		debug_mutex_wake_waiter(lock, waiter);
-
+		event_log_mutex_notify(lock, waiter->task->pid);
 		wake_up_process(waiter->task);
 	}
 

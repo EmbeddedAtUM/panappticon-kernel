@@ -66,5 +66,13 @@ config EVENT_MUTEX_WAIT
        bool "Log mutex waits"
        default yes
 
+config EVENT_MUTEX_WAKE
+       bool "Log mutex wake"
+       default yes
+
+config EVENT_MUTEX_NOTIFY
+       bool "Log who wakes up a mutex"
+       default yes
+
 endif
 
