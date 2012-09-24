@@ -60,6 +60,14 @@ void event_log_sock_resume(void) {
   event_log_simple(EVENT_SOCK_RESUME);
 }
 
+void event_log_io_block(void) {
+  event_log_simple(EVENT_IO_BLOCK);
+}
+
+void event_log_io_resume(void) {
+  event_log_simple(EVENT_IO_RESUME);
+}
+
 void event_log_fork(pid_t pid, pid_t tgid) {
   unsigned long flags;
   struct fork_event event;
