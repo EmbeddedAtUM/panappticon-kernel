@@ -2,12 +2,13 @@
 #include <linux/sched.h>
 #include <linux/list.h>
 
+#include "logging.h"
 #include "buffer.h"
 #include "proc_fs.h"
 
 
 #define PFS_NAME "event_logging"
-#define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR
+#define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR|S_IWOTH|S_IWGRP|S_IWUSR
 static struct proc_dir_entry* el_pfs_entry;
 
 int event_logging_create_pfs(void) {
@@ -18,7 +19,7 @@ int event_logging_create_pfs(void) {
   el_pfs_entry->uid = 0;
   el_pfs_entry->gid = 0;
   el_pfs_entry->read_proc = event_logging_read_pfs;
-  el_pfs_entry->write_proc = NULL;
+  el_pfs_entry->write_proc = event_logging_write_pfs;
   return 0;
 
  err:
@@ -49,4 +50,10 @@ int event_logging_read_pfs(char* page, char** start, off_t off, int count, int* 
   }
   
   return len;
+}
+
+int event_logging_write_pfs(struct file* file, const char* buffer, unsigned long count, void *data) {
+  if (count > 0)
+    flush_all_cpus();
+  return count;
 }

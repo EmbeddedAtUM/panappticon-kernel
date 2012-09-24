@@ -1,5 +1,7 @@
 #include <linux/cpumask.h>
 #include <linux/percpu.h>
+#include <linux/smp.h>
+#include <linux/cpu.h>
 #include <linux/slab.h>
 
 #include "logging.h"
@@ -7,7 +9,7 @@
 #include "proc_fs.h"
 
 // 2^12 = 16 MB with 4096 page size
-#define BUFFER_ORDER 1
+#define BUFFER_ORDER 4
 
 static DEFINE_PER_CPU(struct sbuffer*, sbuffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
@@ -50,6 +52,47 @@ void log_event(void* data, int len) {
   
   // Write data
   sbuffer_write(buf, data, len);
+}
+
+/*
+ * Must be called with hotplugging disabled
+ * and 'cpu' offline.
+ */
+static void __flush_offline_cpu_buffer(int cpu) {
+  printk("eventlogging: flushing offline cpu: %d\n", cpu);
+  put_full(per_cpu(sbuffers, cpu));
+  per_cpu(sbuffers, cpu) = take_empty_try();
+}
+
+/*
+ * Must be called with hotplugging disabled.
+ */
+static void __flush_offline_cpus(void) {
+  int cpu;
+  for_each_cpu_not(cpu, cpu_online_mask) {
+    __flush_offline_cpu_buffer(cpu);
+  }
+}
+
+static void __flush_online_cpu(void* info) {
+  preempt_disable();
+  printk("eventlogging: flushing online cpu: %d\n", smp_processor_id());
+  __flush_cpu_buffer();
+  preempt_enable();
+}
+
+/*
+ * Might sleep, so must be called in sleepable context.
+ */
+void flush_all_cpus(void) {
+  get_online_cpus(); // Disable hotplugging
+  preempt_disable();
+
+  on_each_cpu(__flush_online_cpu, NULL, 1); // Only runs on online cpus
+  __flush_offline_cpus();
+
+  preempt_enable();
+  put_online_cpus(); // Enable hotplugging
 }
 
 static __init int init_alloc_buffers(void) {
