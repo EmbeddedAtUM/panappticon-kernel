@@ -58,6 +58,10 @@
 #include <net/tcp_states.h>
 #include <trace/events/skb.h>
 
+#ifdef CONFIG_EVENT_LOGGING
+#include <eventlogging/events.h>
+#endif
+
 /*
  *	Is a socket 'connection oriented' ?
  */
@@ -113,7 +117,13 @@ static int wait_for_packet(struct sock *sk, int *err, long *timeo_p)
 		goto interrupted;
 
 	error = 0;
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_datagram_block();
+#endif
 	*timeo_p = schedule_timeout(*timeo_p);
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_datagram_resume();
+#endif
 out:
 	finish_wait(sk_sleep(sk), &wait);
 	return error;

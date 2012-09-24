@@ -7,7 +7,7 @@
 #include "proc_fs.h"
 
 // 2^12 = 16 MB with 4096 page size
-#define BUFFER_ORDER 2
+#define BUFFER_ORDER 1
 
 static DEFINE_PER_CPU(struct sbuffer*, sbuffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
