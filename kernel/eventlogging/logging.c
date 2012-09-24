@@ -8,8 +8,8 @@
 #include "buffer.h"
 #include "proc_fs.h"
 
-// 2^12 = 16 MB with 4096 page size
-#define BUFFER_ORDER 4
+#define BUFFER_ORDER   10  // 2^10 = 4 MB with 4096 page size
+#define NUM_BUFFERS 32  // 32 * 4 MB = 128 MB total
 
 static DEFINE_PER_CPU(struct sbuffer*, sbuffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
@@ -96,34 +96,33 @@ void flush_all_cpus(void) {
 }
 
 static __init int init_alloc_buffers(void) {
-  int ret = 0;
+  int i, cpu;
+  int cnt = 0;
+  
+  /* Allocate all buffers */
+  for(i = 0; i < NUM_BUFFERS; ++i) {
+    struct sbuffer* buf;
 
-  int cpu;
-  for_each_cpu(cpu, cpu_possible_mask) {
-    // Create two buffers, one to use now and one for the empty list
-    int i;
-    struct sbuffer* buf[2];
-    for (i = 0; i < 2; ++i) {
-      buf[i] = (struct sbuffer*) kmalloc(sizeof(struct sbuffer), GFP_ATOMIC);
-      if (0 == buf[i]) {
-	ret = -ENOMEM;
-	goto err;
-      }
-      sbuffer_init(buf[i], BUFFER_ORDER);
+    buf = (struct sbuffer*) kmalloc(sizeof(struct sbuffer), GFP_ATOMIC);
+    if (0 == buf) {
+      printk("eventlogging: failed to allocate buffer\n");
+      continue;
     }
 
-    // Attach buffers
-    per_cpu(sbuffers, cpu) = buf[0];
-    put_empty(buf[1]);
+    ++cnt;
+    sbuffer_init(buf, BUFFER_ORDER);
+    put_empty(buf);
+  }
+  printk("eventlogging: allocated %d buffers\n", cnt);
 
-    printk("eventlogging: allocated buffers for CPU %d\n", cpu);
+
+  /* Attach buffer to each cpu */
+  for_each_cpu(cpu, cpu_possible_mask) {
+    per_cpu(sbuffers, cpu) = take_empty_try();
+    printk("eventlogging: attached buffer to CPU %d\n", cpu);
   }
 
   return 0;
-
- err:
-  printk("eventlogging: failed to allocate buffer for CPU %d\n", cpu);
-  return ret;
 }
 
 static __init int init_proc_fs(void) {
