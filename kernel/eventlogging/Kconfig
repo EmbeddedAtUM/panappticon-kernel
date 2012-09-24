@@ -7,3 +7,64 @@ menuconfig EVENT_LOGGING
         bool "Event Logging Zhang/Bild"
         help
           Event tracing framework for Lide Zhang and David Bild.
+
+if EVENT_LOGGING
+
+config EVENT_CONTEXT_SWITCH
+       bool "Log context switches"
+       default no
+
+config EVENT_FORK
+       bool "Log forks"
+       default yes
+
+config EVENT_IO_BLOCK
+       bool "Log IO blocks"
+       default yes
+
+config EVENT_IO_RESUME
+       bool "Log IO resumes"
+       default yes
+
+config EVENT_DATAGRAM_BLOCK
+       bool "Log datagram blocks"
+       default yes
+
+config EVENT_DATAGRAM_RESUME
+       bool "Log datagram resumes"
+       default yes
+
+config EVENT_STREAM_BLOCK
+       bool "Log stream blocks"
+       default yes
+
+config EVENT_STREAM_RESUME
+       bool "Log stream resumes"
+       default yes
+
+config EVENT_SOCK_BLOCK
+       bool "Log socket blocks"
+       default yes
+
+config EVENT_SOCK_RESUME
+       bool "Log socket resumes"
+       default yes
+
+config EVENT_SEMAPHORE_LOCK
+       bool "Log semaphore locks"
+       default no
+
+config EVENT_SEMAPHORE_WAIT
+       bool "Log semaphore waits"
+       default yes
+
+config EVENT_MUTEX_LOCK
+       bool "Log mutex locks"
+       default no
+
+config EVENT_MUTEX_WAIT
+       bool "Log mutex waits"
+       default yes
+
+endif
+

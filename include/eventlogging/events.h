@@ -82,22 +82,27 @@ struct io_resume_event {
 }__attribute__((packed));
 
 #ifdef __KERNEL__
-void event_log_header_init(struct event_hdr* event, u8 type);
-void event_log_simple(u8 event_type);
-void event_log_context_switch(pid_t old, pid_t new);
-void event_log_datagram_block(void);
-void event_log_datagram_resume(void);
-void event_log_stream_block(void);
-void event_log_stream_resume(void);
-void event_log_sock_block(void);
-void event_log_sock_resume(void);
-void event_log_fork(pid_t pid, pid_t tgid);
-void event_log_mutex_lock(void* lock);
-void event_log_mutex_wait(void* lock);;
-void event_log_sem_lock(void* lock);
-void event_log_sem_wait(void* lock);
-void event_log_io_block(void);
-void event_log_io_resume(void);
+
+#ifdef CONFIG_EVENT_LOGGING
+#define DEFINE_EVENT_LOG_FUNC(name, ...) void event_log_##name(__VA_ARGS__)
+#else
+#define DEFINE_EVENT_LOG_FUNC()name, ...) void event_log_##name(__VA_ARGS__){}
 #endif
 
-#endif
+DEFINE_EVENT_LOG_FUNC(context_switch, pid_t old, pid_t new);
+DEFINE_EVENT_LOG_FUNC(datagram_block, void);
+DEFINE_EVENT_LOG_FUNC(datagram_resume, void);
+DEFINE_EVENT_LOG_FUNC(stream_block, void);
+DEFINE_EVENT_LOG_FUNC(stream_resume, void);
+DEFINE_EVENT_LOG_FUNC(sock_block, void);
+DEFINE_EVENT_LOG_FUNC(sock_resume, void);
+DEFINE_EVENT_LOG_FUNC(fork, pid_t pid, pid_t tgid);
+DEFINE_EVENT_LOG_FUNC(mutex_lock, void* lock);
+DEFINE_EVENT_LOG_FUNC(mutex_wait, void* lock);;
+DEFINE_EVENT_LOG_FUNC(sem_lock, void* lock);
+DEFINE_EVENT_LOG_FUNC(sem_wait, void* lock);
+DEFINE_EVENT_LOG_FUNC(io_block, void);
+DEFINE_EVENT_LOG_FUNC(io_resume, void);
+
+#endif // __KERNEL__
+#endif // EVENTLOGGING_EVENTS_H
