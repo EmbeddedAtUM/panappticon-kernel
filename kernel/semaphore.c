@@ -33,6 +33,10 @@
 #include <linux/spinlock.h>
 #include <linux/ftrace.h>
 
+#ifdef CONFIG_EVENT_LOGGING
+#include <eventlogging/events.h>
+#endif
+
 static noinline void __down(struct semaphore *sem);
 static noinline int __down_interruptible(struct semaphore *sem);
 static noinline int __down_killable(struct semaphore *sem);
@@ -55,10 +59,15 @@ void down(struct semaphore *sem)
 	unsigned long flags;
 
 	spin_lock_irqsave(&sem->lock, flags);
-	if (likely(sem->count > 0))
+	if (likely(sem->count > 0)) {
+#ifdef CONFIG_EVENT_LOGGING
+	  event_log_sem_lock(sem);
+#endif
 		sem->count--;
-	else
+	}
+	else {
 		__down(sem);
+	}
 	spin_unlock_irqrestore(&sem->lock, flags);
 }
 EXPORT_SYMBOL(down);
@@ -78,10 +87,15 @@ int down_interruptible(struct semaphore *sem)
 	int result = 0;
 
 	spin_lock_irqsave(&sem->lock, flags);
-	if (likely(sem->count > 0))
+	if (likely(sem->count > 0)) {
+#ifdef CONFIG_EVENT_LOGGING
+	  event_log_sem_lock(sem);
+#endif
 		sem->count--;
-	else
+	}
+	else {
 		result = __down_interruptible(sem);
+	}
 	spin_unlock_irqrestore(&sem->lock, flags);
 
 	return result;
@@ -104,10 +118,15 @@ int down_killable(struct semaphore *sem)
 	int result = 0;
 
 	spin_lock_irqsave(&sem->lock, flags);
-	if (likely(sem->count > 0))
+	if (likely(sem->count > 0)) {
+#ifdef CONFIG_EVENT_LOGGING
+	  event_log_sem_lock(sem);
+#endif
 		sem->count--;
-	else
+	}
+	else {
 		result = __down_killable(sem);
+	}
 	spin_unlock_irqrestore(&sem->lock, flags);
 
 	return result;
@@ -134,8 +153,12 @@ int down_trylock(struct semaphore *sem)
 
 	spin_lock_irqsave(&sem->lock, flags);
 	count = sem->count - 1;
-	if (likely(count >= 0))
+	if (likely(count >= 0)) {
+#ifdef EVENT_CONFIG_LOGGING
+	  event_log_sem_lock(sem);
+#endif
 		sem->count = count;
+	}
 	spin_unlock_irqrestore(&sem->lock, flags);
 
 	return (count < 0);
@@ -158,10 +181,15 @@ int down_timeout(struct semaphore *sem, long jiffies)
 	int result = 0;
 
 	spin_lock_irqsave(&sem->lock, flags);
-	if (likely(sem->count > 0))
+	if (likely(sem->count > 0)) {
+#ifdef EVENT_CONFIG_LOGGING
+	  event_log_sem_lock(sem);
+#endif
 		sem->count--;
-	else
+	}
+	else {
 		result = __down_timeout(sem, jiffies);
+	}
 	spin_unlock_irqrestore(&sem->lock, flags);
 
 	return result;
@@ -210,6 +238,10 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 	list_add_tail(&waiter.list, &sem->wait_list);
 	waiter.task = task;
 	waiter.up = 0;
+
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_sem_wait(sem);
+#endif
 
 	for (;;) {
 		if (signal_pending_state(state, task))

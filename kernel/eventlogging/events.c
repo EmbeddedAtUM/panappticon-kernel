@@ -79,6 +79,7 @@ void event_log_mutex_lock(void* lock) {
   local_irq_save(flags);
   event_log_header_init(&event.hdr, EVENT_MUTEX_LOCK);
   event.lock = (__le32) lock;
+  log_event(&event, sizeof(struct mutex_lock_event));
   local_irq_restore(flags);
 }
 
@@ -89,6 +90,29 @@ void event_log_mutex_wait(void* lock) {
   local_irq_save(flags);
   event_log_header_init(&event.hdr, EVENT_MUTEX_WAIT);
   event.lock = (__le32) lock;
+  log_event(&event, sizeof(struct mutex_wait_event));
+  local_irq_restore(flags);
+}
+
+void event_log_sem_lock(void* lock) {
+  unsigned long flags;
+  struct sem_lock_event event;
+
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, EVENT_SEMAPHORE_LOCK);
+  event.lock = (__le32) lock;
+  log_event(&event, sizeof(struct sem_lock_event));
+  local_irq_restore(flags);
+}
+
+void event_log_sem_wait(void* lock) {
+  unsigned long flags;
+  struct sem_wait_event event;
+
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, EVENT_SEMAPHORE_WAIT);
+  event.lock = (__le32) lock;
+  log_event(&event, sizeof(struct sem_wait_event));
   local_irq_restore(flags);
 }
 
