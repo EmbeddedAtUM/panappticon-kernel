@@ -3,6 +3,10 @@
 
 #include <linux/types.h>
 
+#define EVENT_LOG_MAGIC "michigan"
+
+#define EVENT_SYNC_LOG 0
+
 #define EVENT_CONTEXT_SWITCH 10
 #define EVENT_FORK 15
 
@@ -31,6 +35,11 @@ struct event_hdr {
   __le16 pid;
   __le32 tv_sec;
   __le32 tv_usec;
+}__attribute__((packed));
+
+struct sync_log_event {
+  struct event_hdr hdr;
+  char magic[8];
 }__attribute__((packed));
 
 struct context_switch_event {
