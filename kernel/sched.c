@@ -73,6 +73,10 @@
 #include <linux/slab.h>
 #include <linux/cpuacct.h>
 
+#ifdef CONFIG_EVENT_LOGGING
+#include <eventlogging/events.h>
+#endif
+
 #include <asm/tlb.h>
 #include <asm/irq_regs.h>
 #include <asm/mutex.h>
@@ -3144,6 +3148,10 @@ context_switch(struct rq *rq, struct task_struct *prev,
 {
 	struct mm_struct *mm, *oldmm;
 
+	#ifdef CONFIG_EVENT_LOGGING
+	//event_log_context_switch(prev->pid, next->pid);
+	#endif
+
 	prepare_task_switch(rq, prev, next);
 
 	mm = next->mm;
@@ -5686,7 +5694,13 @@ void __sched io_schedule(void)
 	atomic_inc(&rq->nr_iowait);
 	blk_flush_plug(current);
 	current->in_iowait = 1;
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_io_block();
+#endif
 	schedule();
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_io_resume();
+#endif
 	current->in_iowait = 0;
 	atomic_dec(&rq->nr_iowait);
 	delayacct_blkio_end();
@@ -5702,7 +5716,13 @@ long __sched io_schedule_timeout(long timeout)
 	atomic_inc(&rq->nr_iowait);
 	blk_flush_plug(current);
 	current->in_iowait = 1;
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_io_block();
+#endif
 	ret = schedule_timeout(timeout);
+#ifdef CONFIG_EVENT_LOGGING
+	event_log_io_resume();
+#endif
 	current->in_iowait = 0;
 	atomic_dec(&rq->nr_iowait);
 	delayacct_blkio_end();
