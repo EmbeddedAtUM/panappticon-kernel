@@ -5,7 +5,7 @@
 #include <eventlogging/events.h>
 #include "logging.h"
 
-void event_log_header_init(struct event_hdr* event, u8 type) {
+static inline void event_log_header_init(struct event_hdr* event, u8 type) {
   struct timeval tv;
   do_gettimeofday(&tv);
 
@@ -16,7 +16,7 @@ void event_log_header_init(struct event_hdr* event, u8 type) {
   event->pid = current->pid;
 }
 
-void event_log_simple(u8 event_type) {
+static inline void event_log_simple(u8 event_type) {
   unsigned long flags;
   struct event_hdr event;
   local_irq_save(flags);
@@ -26,6 +26,7 @@ void event_log_simple(u8 event_type) {
 }
 
 void event_log_context_switch(pid_t old, pid_t new) {
+#ifdef CONFIG_EVENT_CONTEXT_SWITCH
   unsigned long flags;
   struct context_switch_event event;
   local_irq_save(flags);
@@ -34,41 +35,59 @@ void event_log_context_switch(pid_t old, pid_t new) {
   event.new_pid = new;
   log_event(&event, sizeof(struct context_switch_event));
   local_irq_restore(flags);
+#endif
 }
 
 void event_log_datagram_block(void) {
+#ifdef CONFIG_EVENT_DATAGRAM_BLOCK
   event_log_simple(EVENT_DATAGRAM_BLOCK);
+#endif
 }
 
 void event_log_datagram_resume(void) {
+#ifdef CONFIG_EVENT_DATAGRAM_RESUME
   event_log_simple(EVENT_DATAGRAM_RESUME);
+#endif
 }
 
 void event_log_stream_block(void) {
+#ifdef CONFIG_EVENT_STREAM_BLOCK
   event_log_simple(EVENT_STREAM_BLOCK);
+#endif
 }
 
 void event_log_stream_resume(void) {
+#ifdef CONFIG_EVENT_STREAM_RESUME
   event_log_simple(EVENT_STREAM_RESUME);
+#endif
 }
 
 void event_log_sock_block(void) {
+#ifdef CONFIG_EVENT_SOCK_BLOCK
   event_log_simple(EVENT_SOCK_BLOCK);
+#endif
 }
 
 void event_log_sock_resume(void) {
+#ifdef CONFIG_EVENT_SOCK_RESUME
   event_log_simple(EVENT_SOCK_RESUME);
+#endif
 }
 
 void event_log_io_block(void) {
+#ifdef CONFIG_EVENT_IO_BLOCK
   event_log_simple(EVENT_IO_BLOCK);
+#endif
 }
 
 void event_log_io_resume(void) {
+#ifdef CONFIG_EVENT_IO_RESUME
   event_log_simple(EVENT_IO_RESUME);
+#endif
 }
 
 void event_log_fork(pid_t pid, pid_t tgid) {
+#ifdef CONFIG_EVENT_FORK
   unsigned long flags;
   struct fork_event event;
   
@@ -78,9 +97,11 @@ void event_log_fork(pid_t pid, pid_t tgid) {
   event.tgid = tgid;
   log_event(&event, sizeof(struct fork_event));
   local_irq_restore(flags);
+#endif
 }
 
 void event_log_mutex_lock(void* lock) {
+#ifdef CONFIG_EVENT_MUTEX_LOCK
   unsigned long flags;
   struct mutex_lock_event event;
 
@@ -89,9 +110,11 @@ void event_log_mutex_lock(void* lock) {
   event.lock = (__le32) lock;
   log_event(&event, sizeof(struct mutex_lock_event));
   local_irq_restore(flags);
+#endif
 }
 
 void event_log_mutex_wait(void* lock) {
+#ifdef CONFIG_EVENT_MUTEX_WAIT
   unsigned long flags;
   struct mutex_wait_event event;
 
@@ -100,9 +123,11 @@ void event_log_mutex_wait(void* lock) {
   event.lock = (__le32) lock;
   log_event(&event, sizeof(struct mutex_wait_event));
   local_irq_restore(flags);
+#endif
 }
 
 void event_log_sem_lock(void* lock) {
+#ifdef CONFIG_EVENT_SEMAPHORE_LOCK
   unsigned long flags;
   struct sem_lock_event event;
 
@@ -111,9 +136,11 @@ void event_log_sem_lock(void* lock) {
   event.lock = (__le32) lock;
   log_event(&event, sizeof(struct sem_lock_event));
   local_irq_restore(flags);
+#endif
 }
 
 void event_log_sem_wait(void* lock) {
+#ifdef CONFIG_EVENT_SEMAPHORE_WAIT
   unsigned long flags;
   struct sem_wait_event event;
 
@@ -122,8 +149,5 @@ void event_log_sem_wait(void* lock) {
   event.lock = (__le32) lock;
   log_event(&event, sizeof(struct sem_wait_event));
   local_irq_restore(flags);
+#endif
 }
-
-
-
-

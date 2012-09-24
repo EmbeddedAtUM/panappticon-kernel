@@ -24,9 +24,7 @@
 #include <linux/interrupt.h>
 #include <linux/debug_locks.h>
 
-#ifdef CONFIG_EVENT_LOGGING
 #include <eventlogging/events.h>
-#endif
 
 /*
  * In the DEBUG case we are using the "NULL fastpath" for mutexes,
@@ -243,9 +241,7 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 		__set_task_state(task, state);
 
 		/* didn't get the lock, go to sleep: */
-#ifdef CONFIG_EVENT_LOGGING
 		event_log_mutex_wait(lock);
-#endif
 		spin_unlock_mutex(&lock->wait_lock, flags);
 		preempt_enable_no_resched();
 		schedule();
@@ -255,9 +251,7 @@ __mutex_lock_common(struct mutex *lock, long state, unsigned int subclass,
 
 done:
 	lock_acquired(&lock->dep_map, ip);
-#ifdef CONFIG_EVENT_LOGGING
 	event_log_mutex_lock(lock);
-#endif
 	/* got the lock - rejoice! */
 	mutex_remove_waiter(lock, &waiter, current_thread_info());
 	mutex_set_owner(lock);

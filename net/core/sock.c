@@ -132,9 +132,7 @@
 #include <net/tcp.h>
 #endif
 
-#ifdef CONFIG_EVENT_LOGGING
 #include <eventlogging/events.h>
-#endif
 
 /*
  * Each address family might have different locking rules, so we have
@@ -1661,13 +1659,9 @@ int sk_wait_data(struct sock *sk, long *timeo)
 
 	prepare_to_wait(sk_sleep(sk), &wait, TASK_INTERRUPTIBLE);
 	set_bit(SOCK_ASYNC_WAITDATA, &sk->sk_socket->flags);
-#ifdef CONFIG_EVENT_LOGGING
 	event_log_sock_block();
-#endif	
 	rc = sk_wait_event(sk, timeo, !skb_queue_empty(&sk->sk_receive_queue));
-#ifdef CONFIG_EVENT_LOGGING
 	event_log_sock_resume();
-#endif
 	clear_bit(SOCK_ASYNC_WAITDATA, &sk->sk_socket->flags);
 	finish_wait(sk_sleep(sk), &wait);
 	return rc;
