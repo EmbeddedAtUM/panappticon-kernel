@@ -36,12 +36,28 @@ void event_log_context_switch(pid_t old, pid_t new) {
   local_irq_restore(flags);
 }
 
-void event_log_network_block(void) {
-  event_log_simple(EVENT_NETWORK_BLOCK);
+void event_log_datagram_block(void) {
+  event_log_simple(EVENT_DATAGRAM_BLOCK);
 }
 
-void event_log_network_resume(void) {
-  event_log_simple(EVENT_NETWORK_RESUME);
+void event_log_datagram_resume(void) {
+  event_log_simple(EVENT_DATAGRAM_RESUME);
+}
+
+void event_log_stream_block(void) {
+  event_log_simple(EVENT_STREAM_BLOCK);
+}
+
+void event_log_stream_resume(void) {
+  event_log_simple(EVENT_STREAM_RESUME);
+}
+
+void event_log_sock_block(void) {
+  event_log_simple(EVENT_SOCK_BLOCK);
+}
+
+void event_log_sock_resume(void) {
+  event_log_simple(EVENT_SOCK_RESUME);
 }
 
 void event_log_fork(pid_t pid, pid_t tgid) {

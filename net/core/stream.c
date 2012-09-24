@@ -19,6 +19,10 @@
 #include <linux/wait.h>
 #include <net/sock.h>
 
+#ifdef CONFIG_EVENT_LOGGING
+#include <eventlogging/events.h>
+#endif
+
 /**
  * sk_stream_write_space - stream socket write_space callback.
  * @sk: socket
@@ -71,10 +75,16 @@ int sk_stream_wait_connect(struct sock *sk, long *timeo_p)
 
 		prepare_to_wait(sk_sleep(sk), &wait, TASK_INTERRUPTIBLE);
 		sk->sk_write_pending++;
+#ifdef CONFIG_EVENT_LOGGING
+		event_log_stream_block();
+#endif
 		done = sk_wait_event(sk, timeo_p,
 				     !sk->sk_err &&
 				     !((1 << sk->sk_state) &
 				       ~(TCPF_ESTABLISHED | TCPF_CLOSE_WAIT)));
+#ifdef CONFIG_EVENT_LOGGING
+		event_log_stream_resume();
+#endif
 		finish_wait(sk_sleep(sk), &wait);
 		sk->sk_write_pending--;
 	} while (!done);
