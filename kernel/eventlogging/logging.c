@@ -4,9 +4,13 @@
 #include <linux/cpu.h>
 #include <linux/slab.h>
 
+#include <eventlogging/events.h>
+
 #include "logging.h"
 #include "buffer.h"
 #include "proc_fs.h"
+
+extern void event_log_header_init(struct event_hdr* event, u8 type);
 
 #define BUFFER_ORDER   10  // 2^10 = 4 MB with 4096 page size
 #define NUM_BUFFERS 32  // 32 * 4 MB = 128 MB total
@@ -14,12 +18,25 @@
 static DEFINE_PER_CPU(struct sbuffer*, sbuffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
 
-static struct sbuffer* __get_cpu_buffer(void) {
+inline static void log_sync_event(struct sbuffer* buf) {
+  struct sync_log_event event;
+  event_log_header_init(&event.hdr, EVENT_SYNC_LOG);
+  memcpy(&event.magic, EVENT_LOG_MAGIC, 8);
+  sbuffer_write(buf, (void*)&event, sizeof(struct sync_log_event));
+}
+
+inline static struct sbuffer* __get_new_cpu_buffer(void) {
+  struct sbuffer* buf = take_empty_try();
+  if (NULL != buf)
+    log_sync_event(buf);
+  return buf;
+}
+
+inline static struct sbuffer* __get_cpu_buffer(void) {
   struct sbuffer* buf = __get_cpu_var(sbuffers);
-  if (NULL == buf) {
-    buf = take_empty_try();
-    __get_cpu_var(sbuffers) = buf;
-  }
+  if (NULL == buf) 
+    buf = __get_new_cpu_buffer();
+  __get_cpu_var(sbuffers) = buf;
   return buf;
 }
 
@@ -61,7 +78,7 @@ void log_event(void* data, int len) {
 static void __flush_offline_cpu_buffer(int cpu) {
   printk("eventlogging: flushing offline cpu: %d\n", cpu);
   put_full(per_cpu(sbuffers, cpu));
-  per_cpu(sbuffers, cpu) = take_empty_try();
+  per_cpu(sbuffers, cpu) = NULL;
 }
 
 /*
@@ -115,11 +132,10 @@ static __init int init_alloc_buffers(void) {
   }
   printk("eventlogging: allocated %d buffers\n", cnt);
 
-
-  /* Attach buffer to each cpu */
+  /* Set up CPUs to grab new buffer on first event */
   for_each_cpu(cpu, cpu_possible_mask) {
-    per_cpu(sbuffers, cpu) = take_empty_try();
-    printk("eventlogging: attached buffer to CPU %d\n", cpu);
+    per_cpu(sbuffers, cpu) = NULL; 
+    printk("eventlogging: prepare buffer for CPU %d\n", cpu);
   }
 
   return 0;

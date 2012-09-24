@@ -5,7 +5,7 @@
 #include <eventlogging/events.h>
 #include "logging.h"
 
-static inline void event_log_header_init(struct event_hdr* event, u8 type) {
+inline void event_log_header_init(struct event_hdr* event, u8 type) {
   struct timeval tv;
   do_gettimeofday(&tv);
 
