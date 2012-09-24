@@ -1,12 +1,14 @@
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
+#include <linux/list.h>
+
+#include "buffer.h"
 #include "proc_fs.h"
+
 
 #define PFS_NAME "event_logging"
 #define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR
 static struct proc_dir_entry* el_pfs_entry;
-
-DECLARE_WAIT_QUEUE_HEAD(el_pfs_queue);
 
 int event_logging_create_pfs(void) {
   el_pfs_entry = create_proc_entry(PFS_NAME, PFS_PERMS, NULL);
@@ -28,17 +30,23 @@ void event_logging_remove_pfs(void) {
 }
 
 int event_logging_read_pfs(char* page, char** start, off_t off, int count, int* eof, void* data) {
-  int len = 0;
+  int len;
+  struct sbuffer* buf;
 
+  len = 0;
   *start = page;
   *eof = 1;
 
   while (len == 0) {
-    if ( wait_event_interruptible(el_pfs_queue, 0) )
+    buf = peek_full_blocking();
+    if (buf == NULL)
       return -ERESTARTSYS;
 
-    len = 0;
+    if (sbuffer_empty(buf)) 
+      recycle_if_empty();
+    else 
+      len += sbuffer_read(buf, page, count);
   }
-
+  
   return len;
 }
