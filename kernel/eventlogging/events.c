@@ -126,6 +126,33 @@ void event_log_mutex_wait(void* lock) {
 #endif
 }
 
+void event_log_mutex_wake(void* lock) {
+#ifdef CONFIG_EVENT_MUTEX_WAKE
+  unsigned long flags;
+  struct mutex_wake_event event;
+  
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, EVENT_MUTEX_WAKE);
+  event.lock = (__le32) lock;
+  log_event(&event, sizeof(struct mutex_wake_event));
+  local_irq_restore(flags);
+#endif
+}
+
+void event_log_mutex_notify(void* lock, pid_t pid) {
+#ifdef CONFIG_EVENT_MUTEX_WAKE
+  unsigned long flags;
+  struct mutex_notify_event event;
+  
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, EVENT_MUTEX_NOTIFY);
+  event.lock = (__le32) lock;
+  event.pid = pid;
+  log_event(&event, sizeof(struct mutex_notify_event));
+  local_irq_restore(flags);
+#endif
+}
+
 void event_log_sem_lock(void* lock) {
 #ifdef CONFIG_EVENT_SEMAPHORE_LOCK
   unsigned long flags;
