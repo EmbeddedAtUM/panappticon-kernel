@@ -74,5 +74,9 @@ config EVENT_MUTEX_NOTIFY
        bool "Log who wakes up a mutex"
        default yes
 
+config EVENT_THREAD_NAME
+       bool "Log when a process name is changed"
+       default yes
+
 endif
 
