@@ -9,6 +9,7 @@
 #include "logging.h"
 #include "buffer.h"
 #include "proc_fs.h"
+#include "idle.h"
 
 extern void event_log_header_init(struct event_hdr* event, u8 type);
 
@@ -167,4 +168,7 @@ static __init int init_proc_fs(void) {
 }
 
 early_initcall(init_alloc_buffers);
+early_initcall(init_idle_notifier);
 fs_initcall(init_proc_fs);
+
+
