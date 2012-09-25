@@ -56,6 +56,8 @@
 #include <linux/oom.h>
 #include <linux/compat.h>
 
+#include <eventlogging/events.h>
+
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
 #include <asm/tlb.h>
@@ -1067,6 +1069,7 @@ void set_task_comm(struct task_struct *tsk, char *buf)
 	strlcpy(tsk->comm, buf, sizeof(tsk->comm));
 	task_unlock(tsk);
 	perf_event_comm(tsk);
+	event_log_thread_name(tsk);
 }
 
 int flush_old_exec(struct linux_binprm * bprm)
