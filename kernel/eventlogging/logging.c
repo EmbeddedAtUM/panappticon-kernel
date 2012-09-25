@@ -12,11 +12,22 @@
 
 extern void event_log_header_init(struct event_hdr* event, u8 type);
 
-#define BUFFER_ORDER   10  // 2^10 = 4 MB with 4096 page size
-#define NUM_BUFFERS 32  // 32 * 4 MB = 128 MB total
+#define BUFFER_ORDER 10  // 2^10 = 4 MB with 4096 page size
+#define NUM_BUFFERS  32  // 32 * 4 MB = 128 MB total
 
 static DEFINE_PER_CPU(struct sbuffer*, sbuffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
+
+inline static void log_missed_count_event(struct sbuffer* buf) {
+  struct missed_count_event event;
+  int cnt = __get_cpu_var(missed_events);
+  if (0 == cnt)
+    return;
+  event_log_header_init(&event.hdr, EVENT_MISSED_COUNT);
+  event.count = __get_cpu_var(missed_events);
+  sbuffer_write(buf, (void*)&event, sizeof(struct missed_count_event));
+  __get_cpu_var(missed_events) = 0;
+}
 
 inline static void log_sync_event(struct sbuffer* buf) {
   struct sync_log_event event;
@@ -25,10 +36,15 @@ inline static void log_sync_event(struct sbuffer* buf) {
   sbuffer_write(buf, (void*)&event, sizeof(struct sync_log_event));
 }
 
+static void init_new_buffer(struct sbuffer* buf) {
+  log_sync_event(buf);
+  log_missed_count_event(buf);
+}
+
 inline static struct sbuffer* __get_new_cpu_buffer(void) {
   struct sbuffer* buf = take_empty_try();
   if (NULL != buf)
-    log_sync_event(buf);
+    init_new_buffer(buf);
   return buf;
 }
 

@@ -6,6 +6,7 @@
 #define EVENT_LOG_MAGIC "michigan"
 
 #define EVENT_SYNC_LOG 0
+#define EVENT_MISSED_COUNT 1
 
 #define EVENT_CONTEXT_SWITCH 10
 #define EVENT_FORK 15
@@ -43,6 +44,11 @@ struct event_hdr {
 struct sync_log_event {
   struct event_hdr hdr;
   char magic[8];
+}__attribute__((packed));
+
+struct missed_count_event {
+  struct event_hdr hdr;
+  __le32 count;
 }__attribute__((packed));
 
 struct context_switch_event {
