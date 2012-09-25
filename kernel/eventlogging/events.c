@@ -38,6 +38,18 @@ void event_log_context_switch(pid_t old, pid_t new) {
 #endif
 }
 
+void event_log_idle_start(void) {
+#ifdef CONFIG_EVENT_IDLE_START
+  event_log_simple(EVENT_IDLE_START);
+#endif
+}
+
+void event_log_idle_end(void) {
+#ifdef CONFIG_EVENT_IDLE_END
+  event_log_simple(EVENT_IDLE_END);
+#endif
+}
+
 void event_log_datagram_block(void) {
 #ifdef CONFIG_EVENT_DATAGRAM_BLOCK
   event_log_simple(EVENT_DATAGRAM_BLOCK);
