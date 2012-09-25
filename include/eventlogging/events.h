@@ -11,6 +11,7 @@
 #define EVENT_CONTEXT_SWITCH 10
 #define EVENT_FORK 15
 #define EVENT_THREAD_NAME 16
+#define EVENT_EXIT 17
 
 #define EVENT_IO_BLOCK 20
 #define EVENT_IO_RESUME 21
@@ -61,6 +62,10 @@ struct fork_event {
   struct event_hdr hdr;
   __le16 pid;
   __le16 tgid;
+}__attribute__((packed));
+
+struct exit_event {
+  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct thread_name_event {
@@ -131,6 +136,7 @@ DEFINE_EVENT_LOG_FUNC(stream_resume, void);
 DEFINE_EVENT_LOG_FUNC(sock_block, void);
 DEFINE_EVENT_LOG_FUNC(sock_resume, void);
 DEFINE_EVENT_LOG_FUNC(fork, pid_t pid, pid_t tgid);
+DEFINE_EVENT_LOG_FUNC(exit, void);
 DEFINE_EVENT_LOG_FUNC(thread_name, struct task_struct* task);
 DEFINE_EVENT_LOG_FUNC(mutex_lock, void* lock);
 DEFINE_EVENT_LOG_FUNC(mutex_wait, void* lock);

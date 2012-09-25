@@ -100,6 +100,12 @@ void event_log_fork(pid_t pid, pid_t tgid) {
 #endif
 }
 
+void event_log_exit(void) {
+#ifdef CONFIG_EVENT_EXIT
+  event_log_simple(EVENT_EXIT);
+#endif
+}
+
 void event_log_thread_name(struct task_struct* task) {
 #ifdef CONFIG_EVENT_THREAD_NAME
    unsigned long flags;
