@@ -18,6 +18,10 @@ config EVENT_FORK
        bool "Log forks"
        default yes
 
+config EVENT_EXIT
+       bool "Log when process exits"
+       default yes
+
 config EVENT_IO_BLOCK
        bool "Log IO blocks"
        default yes

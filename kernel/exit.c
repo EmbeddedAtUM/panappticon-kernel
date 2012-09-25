@@ -52,6 +52,8 @@
 #include <linux/hw_breakpoint.h>
 #include <linux/oom.h>
 
+#include <eventlogging/events.h>
+
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
 #include <asm/pgtable.h>
@@ -905,6 +907,7 @@ NORET_TYPE void do_exit(long code)
 	int group_dead;
 
 	profile_task_exit(tsk);
+	event_log_exit();
 
 	WARN_ON(atomic_read(&tsk->fs_excl));
 	WARN_ON(blk_needs_flush_plug(tsk));
