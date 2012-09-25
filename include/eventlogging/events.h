@@ -9,6 +9,10 @@
 #define EVENT_MISSED_COUNT 1
 
 #define EVENT_CONTEXT_SWITCH 10
+
+#define EVENT_IDLE_START 13
+#define EVENT_IDLE_END 14
+
 #define EVENT_FORK 15
 #define EVENT_THREAD_NAME 16
 #define EVENT_EXIT 17
@@ -56,6 +60,14 @@ struct context_switch_event {
   struct event_hdr hdr;
   __le16 old_pid;
   __le16 new_pid;
+}__attribute__((packed));
+
+struct idle_start_event {
+  struct event_hdr hdr;
+}__attribute__((packed));
+
+struct idle_end_event {
+  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct fork_event {
@@ -129,6 +141,8 @@ struct io_resume_event {
 #endif
 
 DEFINE_EVENT_LOG_FUNC(context_switch, pid_t old, pid_t new);
+DEFINE_EVENT_LOG_FUNC(idle_start, void);
+DEFINE_EVENT_LOG_FUNC(idle_end, void);
 DEFINE_EVENT_LOG_FUNC(datagram_block, void);
 DEFINE_EVENT_LOG_FUNC(datagram_resume, void);
 DEFINE_EVENT_LOG_FUNC(stream_block, void);

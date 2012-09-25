@@ -14,6 +14,14 @@ config EVENT_CONTEXT_SWITCH
        bool "Log context switches"
        default no
 
+config EVENT_IDLE_START
+       bool "Log when idle loop starts"
+       default yes
+
+config EVENT_IDLE_END
+       bool "Log when idle loop stops"
+       default yes
+
 config EVENT_FORK
        bool "Log forks"
        default yes
