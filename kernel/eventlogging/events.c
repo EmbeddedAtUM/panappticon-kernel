@@ -100,6 +100,20 @@ void event_log_fork(pid_t pid, pid_t tgid) {
 #endif
 }
 
+void event_log_thread_name(struct task_struct* task) {
+#ifdef CONFIG_EVENT_THREAD_NAME
+   unsigned long flags;
+   struct thread_name_event event;
+  
+   local_irq_save(flags);
+   event_log_header_init(&event.hdr, EVENT_THREAD_NAME);
+   memcpy(event.comm, task->comm, min(16, TASK_COMM_LEN));
+   log_event(&event, sizeof(struct thread_name_event));
+   local_irq_restore(flags);
+#endif
+}
+
+
 void event_log_mutex_lock(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_LOCK
   unsigned long flags;
