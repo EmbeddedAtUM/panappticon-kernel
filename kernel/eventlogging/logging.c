@@ -11,8 +11,6 @@
 #include "proc_fs.h"
 #include "idle.h"
 
-extern void event_log_header_init(struct event_hdr* event, u8 type);
-
 #define BUFFER_ORDER 10  // 2^10 = 4 MB with 4096 page size
 #define NUM_BUFFERS  32  // 32 * 4 MB = 128 MB total
 
