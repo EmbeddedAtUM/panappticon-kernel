@@ -10,6 +10,7 @@
 #include "buffer.h"
 #include "proc_fs.h"
 #include "idle.h"
+#include "hotcpu.h"
 
 #define BUFFER_ORDER 10  // 2^10 = 4 MB with 4096 page size
 #define NUM_BUFFERS  32  // 32 * 4 MB = 128 MB total
@@ -167,6 +168,7 @@ static __init int init_proc_fs(void) {
 
 early_initcall(init_alloc_buffers);
 early_initcall(init_idle_notifier);
+early_initcall(init_hotcpu_notifier);
 fs_initcall(init_proc_fs);
 
 
