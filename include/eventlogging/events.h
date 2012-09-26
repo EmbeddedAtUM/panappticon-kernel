@@ -82,6 +82,7 @@ struct exit_event {
 
 struct thread_name_event {
   struct event_hdr hdr;
+  __u16 pid;
   char comm[16];
 }__attribute__((packed));
 
@@ -137,6 +138,8 @@ struct io_resume_event {
 #include <linux/time.h>
 #include <linux/sched.h>
 #include <linux/smp.h>
+
+
 
 #ifdef CONFIG_EVENT_LOGGING
 extern void log_event(void* data, int len);
@@ -262,6 +265,7 @@ static inline void event_log_thread_name(struct task_struct* task) {
   
    local_irq_save(flags);
    event_log_header_init(&event.hdr, EVENT_THREAD_NAME);
+   event.pid = task->pid;
    memcpy(event.comm, task->comm, min(16, TASK_COMM_LEN));
    log_event(&event, sizeof(struct thread_name_event));
    local_irq_restore(flags);
