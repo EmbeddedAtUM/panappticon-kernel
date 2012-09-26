@@ -11,6 +11,8 @@
 #define EVENT_CPU_ONLINE 5
 #define EVENT_CPU_DOWN_PREPARE 6
 #define EVENT_CPU_DEAD 7
+#define EVENT_SUSPEND_PREPARE 8
+#define EVENT_POST_SUSPEND 9
 
 #define EVENT_CONTEXT_SWITCH 10
 
@@ -69,6 +71,10 @@ struct context_switch_event {
 struct hotcpu_event {
   struct event_hdr hdr;
   __u8 cpu;
+}__attribute__((packed));
+
+struct suspend_event {
+  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct idle_start_event {
@@ -214,6 +220,18 @@ static inline void event_log_cpu_down_prepare(unsigned int cpu) {
 static inline void event_log_cpu_dead(unsigned int cpu) {
 #ifdef CONFIG_EVENT_CPU_DEAD
   event_log_hotcpu(cpu, EVENT_CPU_DEAD);
+#endif
+}
+
+static inline void event_log_suspend_prepare(void) {
+#ifdef CONFIG_EVENT_SUSPEND_PREPARE
+  event_log_simple(EVENT_SUSPEND_PREPARE);
+#endif
+}
+
+static inline void event_log_post_suspend(void) {
+#ifdef CONFIG_EVENT_POST_SUSPEND
+  event_log_simple(EVENT_POST_SUSPEND);
 #endif
 }
 
