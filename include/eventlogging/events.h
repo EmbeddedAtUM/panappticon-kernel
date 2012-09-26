@@ -143,7 +143,6 @@ struct io_resume_event {
 
 #ifdef CONFIG_EVENT_LOGGING
 extern void log_event(void* data, int len);
-#endif
 
 static inline void event_log_header_init(struct event_hdr* event, u8 type) {
   struct timeval tv;
@@ -164,6 +163,7 @@ static inline void event_log_simple(u8 event_type) {
   log_event(&event, sizeof(struct event_hdr));
   local_irq_restore(flags);
 }
+#endif
 
 static inline void event_log_context_switch(pid_t old, pid_t new) {
 #ifdef CONFIG_EVENT_CONTEXT_SWITCH
