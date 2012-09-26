@@ -88,7 +88,7 @@ void put_full(struct sbuffer* buf) {
   spin_lock_irqsave(&full_lock, flags);
   list_add_tail(&buf->list, &full_list);
   spin_unlock_irqrestore(&full_lock, flags);
-  wake_up_interruptible(&full_wait);
+  //wake_up_interruptible(&full_wait);
 }
 
 struct sbuffer* take_empty_try(void) {
