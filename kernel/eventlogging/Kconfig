@@ -22,6 +22,14 @@ config EVENT_CPU_DEAD
        bool "Log when cpu goes offline"
        default yes
 
+config EVENT_SUSPEND_PREPARE
+       bool "Log when the system is preparing to suspend"
+       default yes
+
+config EVENT_POST_SUSPEND
+       bool "Log when the system resumes from suspend"
+       default yes
+
 config EVENT_CONTEXT_SWITCH
        bool "Log context switches"
        default no
