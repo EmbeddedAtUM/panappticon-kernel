@@ -36,7 +36,7 @@
 #define EVENT_MUTEX_NOTIFY 53
 
 #define EVENT_IPC_LOCK 60
-#define EVENT_IPC_WAIT 11
+#define EVENT_IPC_WAIT 61
 
 struct event_hdr {
   __u8  event_type;
