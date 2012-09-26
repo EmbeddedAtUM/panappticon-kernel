@@ -18,6 +18,8 @@
 #include <linux/freezer.h>
 #include <trace/events/sched.h>
 
+#include <eventlogging/events.h>
+
 static DEFINE_SPINLOCK(kthread_create_lock);
 static LIST_HEAD(kthread_create_list);
 struct task_struct *kthreadd_task;
@@ -174,6 +176,7 @@ struct task_struct *kthread_create_on_node(int (*threadfn)(void *data),
 		vsnprintf(create.result->comm, sizeof(create.result->comm),
 			  namefmt, args);
 		va_end(args);
+		event_log_thread_name(create.result);
 		/*
 		 * root may have changed our (kthreadd's) priority or CPU mask.
 		 * The kernel thread should not inherit these properties.
