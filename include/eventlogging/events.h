@@ -8,6 +8,10 @@
 #define EVENT_SYNC_LOG 0
 #define EVENT_MISSED_COUNT 1
 
+#define EVENT_CPU_ONLINE 5
+#define EVENT_CPU_DOWN_PREPARE 6
+#define EVENT_CPU_DEAD 7
+
 #define EVENT_CONTEXT_SWITCH 10
 
 #define EVENT_IDLE_START 13
@@ -60,6 +64,11 @@ struct context_switch_event {
   struct event_hdr hdr;
   __le16 old_pid;
   __le16 new_pid;
+}__attribute__((packed));
+
+struct hotcpu_event {
+  struct event_hdr hdr;
+  __u8 cpu;
 }__attribute__((packed));
 
 struct idle_start_event {
@@ -175,6 +184,36 @@ static inline void event_log_context_switch(pid_t old, pid_t new) {
   event.new_pid = new;
   log_event(&event, sizeof(struct context_switch_event));
   local_irq_restore(flags);
+#endif
+}
+
+#if defined(CONFIG_EVENT_CPU_ONLINE) || defined(CONFIG_EVENT_CPU_DEAD) || defined(CONFIG_EVENT_CPU_DOWN_PREPARE)
+static inline void event_log_hotcpu(unsigned int cpu, u8 event_type) {
+  unsigned long flags;
+  struct hotcpu_event event;
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, event_type);
+  event.cpu = cpu;
+  log_event(&event, sizeof(struct hotcpu_event));
+  local_irq_restore(flags);
+}
+#endif
+
+static inline void event_log_cpu_online(unsigned int cpu) {
+#ifdef CONFIG_EVENT_CPU_ONLINE
+  event_log_hotcpu(cpu, EVENT_CPU_ONLINE);
+#endif
+}
+
+static inline void event_log_cpu_down_prepare(unsigned int cpu) {
+#ifdef CONFIG_EVENT_CPU_DOWN_PREPARE
+  event_log_hotcpu(cpu, EVENT_CPU_DOWN_PREPARE);
+#endif
+}
+
+static inline void event_log_cpu_dead(unsigned int cpu) {
+#ifdef CONFIG_EVENT_CPU_DEAD
+  event_log_hotcpu(cpu, EVENT_CPU_DEAD);
 #endif
 }
 

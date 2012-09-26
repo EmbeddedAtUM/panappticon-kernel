@@ -10,6 +10,18 @@ menuconfig EVENT_LOGGING
 
 if EVENT_LOGGING
 
+config EVENT_CPU_ONLINE
+       bool "Log when cpu comes online"
+       default yes
+
+config EVENT_CPU_DOWN_PREPARE
+       bool "Log when cpu prepares to go offline"
+       default yes
+
+config EVENT_CPU_DEAD
+       bool "Log when cpu goes offline"
+       default yes
+
 config EVENT_CONTEXT_SWITCH
        bool "Log context switches"
        default no
