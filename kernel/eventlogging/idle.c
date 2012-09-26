@@ -24,5 +24,5 @@ __init int init_idle_notifier(void) {
   return 0;
 }
 #else
-__init int init_idle_notifier(void) {}
+__init int init_idle_notifier(void) {return 0;}
 #endif
