@@ -24,6 +24,8 @@
 #endif
 #include "power.h"
 
+#include <eventlogging/events.h>
+
 enum {
 	DEBUG_EXIT_SUSPEND = 1U << 0,
 	DEBUG_WAKEUP = 1U << 1,
@@ -557,12 +559,14 @@ static void wake_lock_internal(
 
 void wake_lock(struct wake_lock *lock)
 {
+	event_log_wake_lock(lock, 0);
 	wake_lock_internal(lock, 0, 0);
 }
 EXPORT_SYMBOL(wake_lock);
 
 void wake_lock_timeout(struct wake_lock *lock, long timeout)
 {
+	event_log_wake_lock(lock, timeout);
 	wake_lock_internal(lock, timeout, 1);
 }
 EXPORT_SYMBOL(wake_lock_timeout);
@@ -573,6 +577,7 @@ void wake_unlock(struct wake_lock *lock)
 	unsigned long irqflags;
 	spin_lock_irqsave(&list_lock, irqflags);
 	type = lock->flags & WAKE_LOCK_TYPE_MASK;
+	event_log_wake_unlock(lock);
 #ifdef CONFIG_WAKELOCK_STAT
 	wake_unlock_stat_locked(lock, 0);
 #endif
