@@ -22,6 +22,21 @@ config EVENT_CPU_DEAD
        bool "Log when cpu goes offline"
        default yes
 
+config EVENT_SUSPEND_START
+       bool "Log when a suspend request is issued"
+       default yes
+
+config EVENT_SUSPEND
+       bool "Log when the system enters suspend"
+       default yes
+
+config EVENT_RESUME
+       bool "Log when the system resumes"
+       default yes
+
+config EVENT_RESUME_FINISH
+       bool "Log when the resume has finished"
+
 config EVENT_WAKE_LOCK
        bool "Log when a kernel wakelock is acquired"
        default yes

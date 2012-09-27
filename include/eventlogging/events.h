@@ -44,6 +44,11 @@
 #define EVENT_WAKE_LOCK 70
 #define EVENT_WAKE_UNLOCK 71
 
+#define EVENT_SUSPEND_START 75
+#define EVENT_SUSPEND 76
+#define EVENT_RESUME 77
+#define EVENT_RESUME_FINISH 78
+
 struct event_hdr {
   __u8  event_type;
   __u8  cpu;
@@ -243,6 +248,30 @@ static inline void event_log_idle_start(void) {
 static inline void event_log_idle_end(void) {
 #ifdef CONFIG_EVENT_IDLE_END
   event_log_simple(EVENT_IDLE_END);
+#endif
+}
+
+static inline void event_log_suspend_start(void) {
+#ifdef CONFIG_EVENT_SUSPEND_START
+  event_log_simple(EVENT_SUSPEND_START);
+#endif
+}
+
+static inline void event_log_suspend(void) {
+#ifdef CONFIG_EVENT_SUSPEND
+  event_log_simple(EVENT_SUSPEND);
+#endif
+}
+
+static inline void event_log_resume(void) {
+#ifdef CONFIG_EVENT_RESUME
+  event_log_simple(EVENT_RESUME);
+#endif
+}
+
+static inline void event_log_resume_finish(void) {
+#ifdef CONFIG_EVENT_RESUME_FINISH
+  event_log_simple(EVENT_RESUME_FINISH);
 #endif
 }
 
