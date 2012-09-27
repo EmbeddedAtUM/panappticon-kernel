@@ -18,7 +18,6 @@
 
 #define EVENT_IDLE_START 13
 #define EVENT_IDLE_END 14
-
 #define EVENT_FORK 15
 #define EVENT_THREAD_NAME 16
 #define EVENT_EXIT 17
@@ -43,6 +42,9 @@
 
 #define EVENT_IPC_LOCK 60
 #define EVENT_IPC_WAIT 61
+
+#define EVENT_WAKE_LOCK 70
+#define EVENT_WAKE_UNLOCK 71
 
 struct event_hdr {
   __u8  event_type;
@@ -71,6 +73,17 @@ struct context_switch_event {
 struct hotcpu_event {
   struct event_hdr hdr;
   __u8 cpu;
+}__attribute__((packed));
+
+struct wake_lock_event {
+  struct event_hdr hdr;
+  __le32 lock;
+  __le32 timeout;
+}__attribute__((packed));
+
+struct wake_unlock_event {
+  struct event_hdr hdr;
+  __le32 lock;
 }__attribute__((packed));
 
 struct suspend_event {
@@ -293,6 +306,31 @@ static inline void event_log_io_resume(void) {
 #ifdef CONFIG_EVENT_IO_RESUME
   event_log_simple(EVENT_IO_RESUME);
 #endif
+}
+
+static inline void event_log_wake_lock(void* lock, long timeout) {
+#ifdef CONFIG_EVENT_WAKE_LOCK
+  unsigned long flags;
+  struct wake_lock_event event;
+  
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, EVENT_WAKE_LOCK);
+  event.lock = (__le32) lock;
+  event.timeout = timeout;
+  log_event(&event, sizeof(struct wake_lock_event));
+  local_irq_restore(flags);
+#endif
+}
+
+static inline void event_log_wake_unlock(void* lock) {
+  unsigned long flags;
+  struct wake_unlock_event event;
+  
+  local_irq_save(flags);
+  event_log_header_init(&event.hdr, EVENT_WAKE_UNLOCK);
+  event.lock = (__le32) lock;
+  log_event(&event, sizeof(struct wake_unlock_event));
+  local_irq_restore(flags);
 }
 
 static inline void event_log_fork(pid_t pid, pid_t tgid) {
