@@ -27,6 +27,8 @@
 
 #include "power.h"
 
+#include <eventlogging/events.h>
+
 const char *const pm_states[PM_SUSPEND_MAX] = {
 #ifdef CONFIG_EARLYSUSPEND
 	[PM_SUSPEND_ON]		= "on",
@@ -166,6 +168,7 @@ static int suspend_enter(suspend_state_t state)
 	arch_suspend_disable_irqs();
 	BUG_ON(!irqs_disabled());
 
+	event_log_suspend();
 	error = syscore_suspend();
 	if (!error) {
 		if (!(suspend_test(TEST_CORE) || pm_wakeup_pending())) {
@@ -173,6 +176,7 @@ static int suspend_enter(suspend_state_t state)
 			events_check_enabled = false;
 		}
 		syscore_resume();
+		event_log_resume();
 	}
 
 	arch_suspend_enable_irqs();
@@ -276,6 +280,8 @@ int enter_state(suspend_state_t state)
 	if (!mutex_trylock(&pm_mutex))
 		return -EBUSY;
 
+	event_log_suspend_start();
+
 	printk(KERN_INFO "PM: Syncing filesystems ... ");
 	sys_sync();
 	printk("done.\n");
@@ -298,6 +304,7 @@ int enter_state(suspend_state_t state)
 	suspend_finish();
  Unlock:
 	mutex_unlock(&pm_mutex);
+	event_log_resume_finish();
 	return error;
 }
 
@@ -310,8 +317,8 @@ int enter_state(suspend_state_t state)
  */
 int pm_suspend(suspend_state_t state)
 {
-	if (state > PM_SUSPEND_ON && state < PM_SUSPEND_MAX)
-		return enter_state(state);
-	return -EINVAL;
+  if (state > PM_SUSPEND_ON && state < PM_SUSPEND_MAX)
+	return enter_state(state);
+  return -EINVAL;
 }
 EXPORT_SYMBOL(pm_suspend);
