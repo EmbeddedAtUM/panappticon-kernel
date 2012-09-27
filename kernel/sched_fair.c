@@ -1100,6 +1100,7 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 	ideal_runtime = sched_slice(cfs_rq, curr);
 	delta_exec = curr->sum_exec_runtime - curr->prev_sum_exec_runtime;
 	if (delta_exec > ideal_runtime) {
+		event_log_preempt_tick();
 		resched_task(rq_of(cfs_rq)->curr);
 		/*
 		 * The current task ran long enough, ensure it doesn't get
@@ -1127,8 +1128,10 @@ check_preempt_tick(struct cfs_rq *cfs_rq, struct sched_entity *curr)
 		if (delta < 0)
 			return;
 
-		if (delta > ideal_runtime)
+		if (delta > ideal_runtime) {
+			event_log_preempt_tick();
 			resched_task(rq_of(cfs_rq)->curr);
+		}
 	}
 }
 

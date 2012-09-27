@@ -13,6 +13,7 @@
 #define EVENT_CPU_DEAD 7
 
 #define EVENT_CONTEXT_SWITCH 10
+#define EVENT_PREEMPT_TICK 11
 
 #define EVENT_IDLE_START 13
 #define EVENT_IDLE_END 14
@@ -71,6 +72,10 @@ struct context_switch_event {
   struct event_hdr hdr;
   __le16 old_pid;
   __le16 new_pid;
+}__attribute__((packed));
+
+struct preempt_tick_event {
+  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct hotcpu_event {
@@ -206,6 +211,12 @@ static inline void event_log_context_switch(pid_t old, pid_t new) {
   event.new_pid = new;
   log_event(&event, sizeof(struct context_switch_event));
   local_irq_restore(flags);
+#endif
+}
+
+static inline void event_log_preempt_tick(void) {
+#ifdef CONFIG_EVENT_PREEMPT_TICK
+  event_log_simple(EVENT_PREEMPT_TICK);
 #endif
 }
 
