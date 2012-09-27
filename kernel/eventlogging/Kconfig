@@ -49,6 +49,10 @@ config EVENT_CONTEXT_SWITCH
        bool "Log context switches"
        default no
 
+config EVENT_PREEMPT_TICK
+       bool "Log when a process is about to be preempted"
+       default yes
+
 config EVENT_IDLE_START
        bool "Log when idle loop starts"
        default yes
