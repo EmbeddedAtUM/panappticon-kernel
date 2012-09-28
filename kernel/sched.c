@@ -5535,6 +5535,7 @@ SYSCALL_DEFINE0(sched_yield)
 	do_raw_spin_unlock(&rq->lock);
 	preempt_enable_no_resched();
 
+	event_log_yield();
 	schedule();
 
 	return 0;
@@ -5671,8 +5672,10 @@ out:
 	double_rq_unlock(rq, p_rq);
 	local_irq_restore(flags);
 
-	if (yielded)
+	if (yielded) {
+		event_log_yield();
 		schedule();
+	}
 
 	return yielded;
 }
