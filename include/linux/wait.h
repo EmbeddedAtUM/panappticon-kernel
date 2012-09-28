@@ -25,6 +25,24 @@
 #include <asm/system.h>
 #include <asm/current.h>
 
+#ifdef CONFIG_EVENT_WAITQUEUE_WAIT
+extern void event_log_waitqueue_wait(void* wq);
+#else
+#define event_log_waitqueue_wait(t) do{;}while(0);
+#endif
+
+#ifdef CONFIG_EVENT_WAITQUEUE_WAIT
+extern void event_log_waitqueue_wake(void* wq);
+#else
+#define event_log_waitqueue_wait(t) do{;}while(0);
+#endif
+
+#ifdef CONFIG_EVENT_WAITQUEUE_WAIT
+extern void event_log_waitqueue_notify(void* wq, pid_t pid);
+#else
+#define event_log_waitqueue_wait(t, p) do{;}while(0);
+#endif
+
 typedef struct __wait_queue wait_queue_t;
 typedef int (*wait_queue_func_t)(wait_queue_t *wait, unsigned mode, int flags, void *key);
 int default_wake_function(wait_queue_t *wait, unsigned mode, int flags, void *key);
@@ -482,7 +500,9 @@ do {									\
 			spin_unlock_irq(&(wq).lock);			\
 		else							\
 			spin_unlock(&(wq).lock);			\
+		event_log_waitqueue_wait(&wq);				\
 		schedule();						\
+		event_log_waitqueue_wake(&wq);				\
 		if (irq)						\
 			spin_lock_irq(&(wq).lock);			\
 		else							\

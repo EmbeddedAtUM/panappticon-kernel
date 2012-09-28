@@ -36,6 +36,19 @@ config EVENT_RESUME
 
 config EVENT_RESUME_FINISH
        bool "Log when the resume has finished"
+       default yes
+
+config EVENT_WAITQUEUE_WAIT
+       bool "Log wait queue event waits"
+       default yes
+
+config EVENT_WAITQUEUE_WAKE
+       bool "Log wait queue event wakes"
+       default yes
+
+config EVENT_WAITQUEUE_NOTIFY
+       bool "Log wait queue event notifies"
+       default yes
 
 config EVENT_WAKE_LOCK
        bool "Log when a kernel wakelock is acquired"
