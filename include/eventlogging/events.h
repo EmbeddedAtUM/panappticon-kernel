@@ -14,6 +14,7 @@
 
 #define EVENT_CONTEXT_SWITCH 10
 #define EVENT_PREEMPT_TICK 11
+#define EVENT_YIELD 12
 
 #define EVENT_IDLE_START 13
 #define EVENT_IDLE_END 14
@@ -81,6 +82,10 @@ struct context_switch_event {
 }__attribute__((packed));
 
 struct preempt_tick_event {
+  struct event_hdr hdr;
+}__attribute__((packed));
+
+struct yield_event {
   struct event_hdr hdr;
 }__attribute__((packed));
 
@@ -238,6 +243,12 @@ static inline void event_log_context_switch(pid_t old, pid_t new, long state) {
 static inline void event_log_preempt_tick(void) {
 #ifdef CONFIG_EVENT_PREEMPT_TICK
   event_log_simple(EVENT_PREEMPT_TICK);
+#endif
+}
+
+static inline void event_log_yield(void) {
+#ifdef CONFIG_EVENT_YIELD
+  event_log_simple(EVENT_YIELD);
 #endif
 }
 

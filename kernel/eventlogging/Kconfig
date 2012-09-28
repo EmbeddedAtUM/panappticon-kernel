@@ -66,6 +66,10 @@ config EVENT_PREEMPT_TICK
        bool "Log when a process is about to be preempted"
        default yes
 
+config EVENT_YIELD
+       bool "Log when a process yields the CPU"
+       default yes
+
 config EVENT_IDLE_START
        bool "Log when idle loop starts"
        default yes
