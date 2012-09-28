@@ -203,6 +203,7 @@ struct io_resume_event {
 
 #ifdef __KERNEL__
 
+#include <linux/hardirq.h>
 #include <linux/time.h>
 #include <linux/sched.h>
 #include <linux/smp.h>
@@ -218,7 +219,7 @@ static inline void event_log_header_init(struct event_hdr* event, u8 type) {
   event->tv_sec = tv.tv_sec;
   event->tv_usec = tv.tv_usec;
   event->cpu = smp_processor_id();
-  event->pid = current->pid;
+  event->pid = current->pid | (in_interrupt() ? 0x8000 : 0);
 }
 
 static inline void event_log_simple(u8 event_type) {
