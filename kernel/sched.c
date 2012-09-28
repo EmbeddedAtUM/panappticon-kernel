@@ -3146,7 +3146,7 @@ context_switch(struct rq *rq, struct task_struct *prev,
 {
 	struct mm_struct *mm, *oldmm;
 
-	event_log_context_switch(prev->pid, next->pid);
+	event_log_context_switch(prev->pid, next->pid, prev->state);
 
 	prepare_task_switch(rq, prev, next);
 

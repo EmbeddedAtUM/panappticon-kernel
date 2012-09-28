@@ -76,6 +76,8 @@ struct context_switch_event {
   struct event_hdr hdr;
   __le16 old_pid;
   __le16 new_pid;
+  __u8   state;
+  
 }__attribute__((packed));
 
 struct preempt_tick_event {
@@ -219,7 +221,7 @@ static inline void event_log_simple(u8 event_type) {
 }
 #endif
 
-static inline void event_log_context_switch(pid_t old, pid_t new) {
+static inline void event_log_context_switch(pid_t old, pid_t new, long state) {
 #ifdef CONFIG_EVENT_CONTEXT_SWITCH
   unsigned long flags;
   struct context_switch_event event;
@@ -227,6 +229,7 @@ static inline void event_log_context_switch(pid_t old, pid_t new) {
   event_log_header_init(&event.hdr, EVENT_CONTEXT_SWITCH);
   event.old_pid = old;
   event.new_pid = new;
+  event.state = (__u8) (0x0FF & state);
   log_event(&event, sizeof(struct context_switch_event));
   local_irq_restore(flags);
 #endif
