@@ -1940,6 +1940,7 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	return;
 
 preempt:
+	event_log_preempt_wakeup();
 	resched_task(curr);
 	/*
 	 * Only set the backward buddy when the current task is still

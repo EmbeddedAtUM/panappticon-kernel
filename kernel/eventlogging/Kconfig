@@ -63,7 +63,11 @@ config EVENT_CONTEXT_SWITCH
        default no
 
 config EVENT_PREEMPT_TICK
-       bool "Log when a process is about to be preempted"
+       bool "Log when a process is about to be preempted due to timeout"
+       default yes
+
+config EVENT_PREEMPT_WAKEUP
+       bool "Log when a process is about to be preempted due to wakeup"
        default yes
 
 config EVENT_YIELD
