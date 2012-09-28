@@ -68,11 +68,12 @@ void
 prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
 {
 	unsigned long flags;
-
 	wait->flags &= ~WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
-	if (list_empty(&wait->task_list))
+	if (list_empty(&wait->task_list)) {
 		__add_wait_queue(q, wait);
+		event_log_waitqueue_wait(q);
+	}
 	set_current_state(state);
 	spin_unlock_irqrestore(&q->lock, flags);
 }
@@ -85,8 +86,10 @@ prepare_to_wait_exclusive(wait_queue_head_t *q, wait_queue_t *wait, int state)
 
 	wait->flags |= WQ_FLAG_EXCLUSIVE;
 	spin_lock_irqsave(&q->lock, flags);
-	if (list_empty(&wait->task_list))
+	if (list_empty(&wait->task_list)) {
 		__add_wait_queue_tail(q, wait);
+		event_log_waitqueue_wait(q);
+	}
 	set_current_state(state);
 	spin_unlock_irqrestore(&q->lock, flags);
 }
@@ -105,6 +108,7 @@ void finish_wait(wait_queue_head_t *q, wait_queue_t *wait)
 {
 	unsigned long flags;
 
+	event_log_waitqueue_wake(q);
 	__set_current_state(TASK_RUNNING);
 	/*
 	 * We can check for list emptiness outside the lock
@@ -152,8 +156,10 @@ void abort_exclusive_wait(wait_queue_head_t *q, wait_queue_t *wait,
 
 	__set_current_state(TASK_RUNNING);
 	spin_lock_irqsave(&q->lock, flags);
-	if (!list_empty(&wait->task_list))
+	if (!list_empty(&wait->task_list)) {
 		list_del_init(&wait->task_list);
+		event_log_waitqueue_wake(q);
+	}
 	else if (waitqueue_active(q))
 		__wake_up_locked_key(q, mode, key);
 	spin_unlock_irqrestore(&q->lock, flags);

@@ -39,6 +39,10 @@
 #define EVENT_MUTEX_WAKE 52
 #define EVENT_MUTEX_NOTIFY 53
 
+#define EVENT_WAITQUEUE_WAIT 55
+#define EVENT_WAITQUEUE_WAKE 56
+#define EVENT_WAITQUEUE_NOTIFY 57
+
 #define EVENT_IPC_LOCK 60
 #define EVENT_IPC_WAIT 61
 
@@ -130,6 +134,22 @@ struct network_resume_event {
   struct event_hdr hdr;
 }__attribute__((packed));
 
+struct waitqueue_wait_event {
+  struct event_hdr hdr;
+  __le32 wq;
+}__attribute__((packed));
+
+struct waitqueue_wake_event {
+  struct event_hdr hdr;
+  __le32 wq;
+}__attribute__((packed));
+
+struct waitqueue_notify_event {
+  struct event_hdr hdr;
+  __le32 wq;
+  __le16 pid;
+}__attribute__((packed));
+
 struct mutex_lock_event {
   struct event_hdr hdr;
   __le32 lock;
@@ -174,8 +194,6 @@ struct io_resume_event {
 #include <linux/time.h>
 #include <linux/sched.h>
 #include <linux/smp.h>
-
-
 
 #ifdef CONFIG_EVENT_LOGGING
 extern void log_event(void* data, int len);
@@ -392,6 +410,16 @@ static inline void event_log_thread_name(struct task_struct* task) {
    local_irq_restore(flags);
 #endif
 }
+
+/* Can't be inlined due to #include ordering conflicts in wait.h and I
+ * don't want to figure that out right now.  Can do it later, but
+ * might involve a separate header file for the waitqueue events
+ * or externing (instead of #including) the depedencies
+ * for event_log_header_init().
+ */
+void event_log_waitqueue_wait(void* wq);
+void event_log_waitqueue_wake(void* wq);
+void event_log_waitqueue_notify(void* wq, pid_t pid);
 
 static inline void event_log_mutex_lock(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_LOCK
