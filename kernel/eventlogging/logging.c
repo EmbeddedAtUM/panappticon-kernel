@@ -84,27 +84,27 @@ static struct sbuffer* __flush_cpu_buffer(void) {
   return __get_cpu_buffer();
 }
 
-void log_event(void* data, int len) {
+/* If not enough space, returns NULL and logs a missed event. */
+void* reserve_event(int len) {
   struct sbuffer* buf;
   void* wp;
 
   /* Get buffer, if available */
   buf = __get_cpu_buffer();
- check_buf:
-  if (NULL == buf) {
+ check_buffer:
+  if (!buf) {
     __get_cpu_var(missed_events)++;
-    return;
+    return NULL;
   }
 
-  wp = sbuffer_reserve(buf, len);  
-  /* If full, get new buffer */
+  wp = sbuffer_reserve(buf, len);
+  /* if full, get new buffer */
   if (!wp) {
     buf = __flush_cpu_buffer();
-    goto check_buf;
+    goto check_buffer;
   }
-  
-  /* Write the data */
-  memcpy(wp, data, len);
+
+  return wp;
 }
 
 /*
