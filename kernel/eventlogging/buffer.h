@@ -23,12 +23,4 @@ int sbuffer_write(struct sbuffer* buf, char* page, int count);
 int sbuffer_empty(struct sbuffer* buf); // any data to read?
 int sbuffer_read(struct sbuffer* buf, char* page, int count);
 
-
-void put_empty(struct sbuffer* buf);
-void put_full(struct sbuffer* buf);
-
-struct sbuffer* take_empty_try(void);
-struct sbuffer* peek_full_blocking(void);
-void recycle_if_empty(void); // move from full to empty, if empty
-
 #endif

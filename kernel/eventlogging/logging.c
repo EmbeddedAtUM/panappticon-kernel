@@ -11,12 +11,16 @@
 #include "proc_fs.h"
 #include "idle.h"
 #include "hotcpu.h"
+#include "queue.h"
 
 #define BUFFER_ORDER 10  // 2^10 = 4 MB with 4096 page size
 #define NUM_BUFFERS  32  // 32 * 4 MB = 128 MB total
 
-static DEFINE_PER_CPU(struct sbuffer*, sbuffers);
+static DEFINE_PER_CPU(struct sbuffer*, cpu_buffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
+
+DEFINE_QUEUE(empty_buffers);
+DEFINE_QUEUE(full_buffers);
 
 inline static void log_missed_count_event(struct sbuffer* buf) {
   struct missed_count_event event;
@@ -42,25 +46,25 @@ static void init_new_buffer(struct sbuffer* buf) {
 }
 
 inline static struct sbuffer* __get_new_cpu_buffer(void) {
-  struct sbuffer* buf = take_empty_try();
+  struct sbuffer* buf = queue_take_try(&empty_buffers);
   if (NULL != buf)
     init_new_buffer(buf);
   return buf;
 }
 
 inline static struct sbuffer* __get_cpu_buffer(void) {
-  struct sbuffer* buf = __get_cpu_var(sbuffers);
+  struct sbuffer* buf = __get_cpu_var(cpu_buffers);
   if (NULL == buf) 
     buf = __get_new_cpu_buffer();
-  __get_cpu_var(sbuffers) = buf;
+  __get_cpu_var(cpu_buffers) = buf;
   return buf;
 }
 
 static struct sbuffer* __flush_cpu_buffer(void) {
-  struct sbuffer* buf = __get_cpu_var(sbuffers);
+  struct sbuffer* buf = __get_cpu_var(cpu_buffers);
   if (NULL != buf)
-    put_full(buf);
-  __get_cpu_var(sbuffers) = NULL;
+    queue_put(&full_buffers, buf);
+  __get_cpu_var(cpu_buffers) = NULL;
   return __get_cpu_buffer();
 }
 
@@ -94,12 +98,12 @@ void log_event(void* data, int len) {
  * and 'cpu' offline.
  */
 static void __flush_offline_cpu_buffer(int cpu) {
-  struct sbuffer* buf = per_cpu(sbuffers, cpu);
+  struct sbuffer* buf = per_cpu(cpu_buffers, cpu);
   printk("eventlogging: flushing offline cpu: %d\n", cpu);
   if (NULL == buf)
     return;
-  put_full(buf);
-  per_cpu(sbuffers, cpu) = NULL;
+  queue_put(&full_buffers, buf); 
+  per_cpu(cpu_buffers, cpu) = NULL;
 }
 
 /*
@@ -149,13 +153,13 @@ static __init int init_alloc_buffers(void) {
 
     ++cnt;
     sbuffer_init(buf, BUFFER_ORDER);
-    put_empty(buf);
+    queue_put(&empty_buffers, buf);
   }
   printk("eventlogging: allocated %d buffers\n", cnt);
 
   /* Set up CPUs to grab new buffer on first event */
   for_each_cpu(cpu, cpu_possible_mask) {
-    per_cpu(sbuffers, cpu) = NULL; 
+    per_cpu(cpu_buffers, cpu) = NULL; 
     printk("eventlogging: prepare buffer for CPU %d\n", cpu);
   }
 
