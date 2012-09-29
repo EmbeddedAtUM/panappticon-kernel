@@ -29,21 +29,31 @@ static DEFINE_MUTEX(pfs_read_lock);
 static struct sbuffer* pfs_read_buffer;
 
 inline static void log_missed_count_event(struct sbuffer* buf) {
-  struct missed_count_event event;
-  int cnt = __get_cpu_var(missed_events);
+  int cnt;
+  struct missed_count_event* event;
+  
+  cnt = __get_cpu_var(missed_events);
   if (0 == cnt)
     return;
-  event_log_header_init(&event.hdr, EVENT_MISSED_COUNT);
-  event.count = __get_cpu_var(missed_events);
-  sbuffer_write(buf, (void*)&event, sizeof(struct missed_count_event));
+
+  event = (struct missed_count_event*) sbuffer_reserve(buf, sizeof(struct missed_count_event));
+  if (!event)
+    return; // Shouldn't happen in new buffer
+
+  event_log_header_init(&event->hdr, EVENT_MISSED_COUNT);
+  event->count = cnt;
   __get_cpu_var(missed_events) = 0;
 }
 
 inline static void log_sync_event(struct sbuffer* buf) {
-  struct sync_log_event event;
-  event_log_header_init(&event.hdr, EVENT_SYNC_LOG);
-  memcpy(&event.magic, EVENT_LOG_MAGIC, 8);
-  sbuffer_write(buf, (void*)&event, sizeof(struct sync_log_event));
+  struct sync_log_event* event;
+
+  event = (struct sync_log_event*) sbuffer_reserve(buf, sizeof(struct sync_log_event));
+  if (!event)
+    return; // Shouldn't happen in new buffer
+
+  event_log_header_init(&event->hdr, EVENT_SYNC_LOG);
+  memcpy(&event->magic, EVENT_LOG_MAGIC, 8);
 }
 
 static void init_new_buffer(struct sbuffer* buf) {
@@ -76,27 +86,25 @@ static struct sbuffer* __flush_cpu_buffer(void) {
 
 void log_event(void* data, int len) {
   struct sbuffer* buf;
-  unsigned long avail;
+  void* wp;
 
-  // Get buffer, if available
+  /* Get buffer, if available */
   buf = __get_cpu_buffer();
+ check_buf:
   if (NULL == buf) {
     __get_cpu_var(missed_events)++;
     return;
   }
 
-  // Flush and replace buffer, if not enough room for new event
-  avail = sbuffer_avail(buf);
-  if (avail < len) {
+  wp = sbuffer_reserve(buf, len);  
+  /* If full, get new buffer */
+  if (!wp) {
     buf = __flush_cpu_buffer();
-    if (NULL == buf) {
-      __get_cpu_var(missed_events)++;
-      return;
-    }
+    goto check_buf;
   }
   
-  // Write data
-  sbuffer_write(buf, data, len);
+  /* Write the data */
+  memcpy(wp, data, len);
 }
 
 /*
