@@ -18,8 +18,7 @@ int sbuffer_init(struct sbuffer* buf, unsigned int order);
 void sbuffer_free(struct sbuffer* buf);
 
 void sbuffer_clear(struct sbuffer* buf);
-int sbuffer_avail(struct sbuffer* buf); // how much space to write?
-int sbuffer_write(struct sbuffer* buf, char* page, int count);
+void* sbuffer_reserve(struct sbuffer* buf, int len);
 int sbuffer_empty(struct sbuffer* buf); // any data to read?
 int sbuffer_read(struct sbuffer* buf, char* page, int count);
 
