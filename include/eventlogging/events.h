@@ -209,7 +209,18 @@ struct io_resume_event {
 #include <linux/smp.h>
 
 #ifdef CONFIG_EVENT_LOGGING
-extern void log_event(void* data, int len);
+extern void* reserve_event(int len);
+
+#define reserve(name) name = (typeof(name)) reserve_event(sizeof(*name))
+#define init_event(type, event_type, name) type* name;	\
+  unsigned long flags;					\
+  local_irq_save(flags);				\
+  reserve(name);					\
+  if (name) {							\
+    event_log_header_init((struct event_hdr*) name, event_type)
+
+#define finish_event() } \
+    local_irq_restore(flags)
 
 static inline void event_log_header_init(struct event_hdr* event, u8 type) {
   struct timeval tv;
@@ -223,26 +234,18 @@ static inline void event_log_header_init(struct event_hdr* event, u8 type) {
 }
 
 static inline void event_log_simple(u8 event_type) {
-  unsigned long flags;
-  struct event_hdr event;
-  local_irq_save(flags);
-  event_log_header_init(&event, event_type);
-  log_event(&event, sizeof(struct event_hdr));
-  local_irq_restore(flags);
+  init_event(struct event_hdr, event_type, event);
+  finish_event();
 }
 #endif
 
 static inline void event_log_context_switch(pid_t old, pid_t new, long state) {
 #ifdef CONFIG_EVENT_CONTEXT_SWITCH
-  unsigned long flags;
-  struct context_switch_event event;
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_CONTEXT_SWITCH);
-  event.old_pid = old;
-  event.new_pid = new;
-  event.state = (__u8) (0x0FF & state);
-  log_event(&event, sizeof(struct context_switch_event));
-  local_irq_restore(flags);
+  init_event(struct context_switch_event, EVENT_CONTEXT_SWITCH, event);
+  event->old_pid = old;
+  event->new_pid = new;
+  event->state = (__u8) (0x0FF & state);
+  finish_event();
 #endif
 }
 
@@ -266,13 +269,9 @@ static inline void event_log_yield(void) {
 
 #if defined(CONFIG_EVENT_CPU_ONLINE) || defined(CONFIG_EVENT_CPU_DEAD) || defined(CONFIG_EVENT_CPU_DOWN_PREPARE)
 static inline void event_log_hotcpu(unsigned int cpu, u8 event_type) {
-  unsigned long flags;
-  struct hotcpu_event event;
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, event_type);
-  event.cpu = cpu;
-  log_event(&event, sizeof(struct hotcpu_event));
-  local_irq_restore(flags);
+  init_event(struct hotcpu_event, EVENT_CPU_ONLINE, event);
+  event->cpu = cpu;
+  finish_event();
 }
 #endif
 
@@ -380,40 +379,27 @@ static inline void event_log_io_resume(void) {
 
 static inline void event_log_wake_lock(void* lock, long timeout) {
 #ifdef CONFIG_EVENT_WAKE_LOCK
-  unsigned long flags;
-  struct wake_lock_event event;
-  
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_WAKE_LOCK);
-  event.lock = (__le32) lock;
-  event.timeout = timeout;
-  log_event(&event, sizeof(struct wake_lock_event));
-  local_irq_restore(flags);
+  init_event(struct wake_lock_event, EVENT_WAKE_LOCK, event);
+  event->lock = (__le32) lock;
+  event->timeout = timeout;
+  finish_event();
 #endif
 }
 
 static inline void event_log_wake_unlock(void* lock) {
-  unsigned long flags;
-  struct wake_unlock_event event;
-  
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_WAKE_UNLOCK);
-  event.lock = (__le32) lock;
-  log_event(&event, sizeof(struct wake_unlock_event));
-  local_irq_restore(flags);
+#ifdef CONFIG_EVENT_WAKE_UNLOCK
+  init_event(struct wake_unlock_event, EVENT_WAKE_UNLOCK, event);
+  event->lock = (__le32) lock;
+  finish_event();
+#endif
 }
 
 static inline void event_log_fork(pid_t pid, pid_t tgid) {
 #ifdef CONFIG_EVENT_FORK
-  unsigned long flags;
-  struct fork_event event;
-  
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_FORK);
-  event.pid = pid;
-  event.tgid = tgid;
-  log_event(&event, sizeof(struct fork_event));
-  local_irq_restore(flags);
+  init_event(struct fork_event, EVENT_FORK, event);
+  event->pid = pid;
+  event->tgid = tgid;
+  finish_event();
 #endif
 }
 
@@ -425,15 +411,10 @@ static inline void event_log_exit(void) {
 
 static inline void event_log_thread_name(struct task_struct* task) {
 #ifdef CONFIG_EVENT_THREAD_NAME
-   unsigned long flags;
-   struct thread_name_event event;
-  
-   local_irq_save(flags);
-   event_log_header_init(&event.hdr, EVENT_THREAD_NAME);
-   event.pid = task->pid;
-   memcpy(event.comm, task->comm, min(16, TASK_COMM_LEN));
-   log_event(&event, sizeof(struct thread_name_event));
-   local_irq_restore(flags);
+  init_event(struct thread_name_event, EVENT_THREAD_NAME, event);
+  event->pid = task->pid;
+  memcpy(event->comm, task->comm, min(16, TASK_COMM_LEN));
+  finish_event(); 
 #endif
 }
 
@@ -449,80 +430,50 @@ void event_log_waitqueue_notify(void* wq, pid_t pid);
 
 static inline void event_log_mutex_lock(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_LOCK
-  unsigned long flags;
-  struct mutex_lock_event event;
-
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_MUTEX_LOCK);
-  event.lock = (__le32) lock;
-  log_event(&event, sizeof(struct mutex_lock_event));
-  local_irq_restore(flags);
+  init_event(struct mutex_lock_event, EVENT_MUTEX_LOCK, event);
+  event->lock = (__le32) lock;
+  finish_event();
 #endif
 }
 
 static inline void event_log_mutex_wait(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_WAIT
-  unsigned long flags;
-  struct mutex_wait_event event;
-
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_MUTEX_WAIT);
-  event.lock = (__le32) lock;
-  log_event(&event, sizeof(struct mutex_wait_event));
-  local_irq_restore(flags);
+  init_event(struct mutex_wait_event, EVENT_MUTEX_WAIT, event);
+  event->lock = (__le32) lock;
+  finish_event();
 #endif
 }
 
 static inline void event_log_mutex_wake(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_WAKE
-  unsigned long flags;
-  struct mutex_wake_event event;
-  
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_MUTEX_WAKE);
-  event.lock = (__le32) lock;
-  log_event(&event, sizeof(struct mutex_wake_event));
-  local_irq_restore(flags);
+  init_event(struct mutex_wake_event, EVENT_MUTEX_WAKE, event);
+  event->lock = (__le32) lock;
+  finish_event();
 #endif
 }
 
 static inline void event_log_mutex_notify(void* lock, pid_t pid) {
-#ifdef CONFIG_EVENT_MUTEX_WAKE
-  unsigned long flags;
-  struct mutex_notify_event event;
-  
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_MUTEX_NOTIFY);
-  event.lock = (__le32) lock;
-  event.pid = pid;
-  log_event(&event, sizeof(struct mutex_notify_event));
-  local_irq_restore(flags);
+#ifdef CONFIG_EVENT_MUTEX_NOTIFY
+  init_event(struct mutex_notify_event, EVENT_MUTEX_NOTIFY, event);
+  event->lock = (__le32) lock;
+  event->pid = pid;
+  finish_event();
 #endif
 }
 
 static inline void event_log_sem_lock(void* lock) {
 #ifdef CONFIG_EVENT_SEMAPHORE_LOCK
-  unsigned long flags;
-  struct sem_lock_event event;
-
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_SEMAPHORE_LOCK);
-  event.lock = (__le32) lock;
-  log_event(&event, sizeof(struct sem_lock_event));
-  local_irq_restore(flags);
+  init_event(struct sem_lock_event, EVENT_SEMAPHORE_LOCK, event);
+  event->lock = (__le32) lock;
+  finish_event();
 #endif
 }
 
 static inline void event_log_sem_wait(void* lock) {
 #ifdef CONFIG_EVENT_SEMAPHORE_WAIT
-  unsigned long flags;
-  struct sem_wait_event event;
-
-  local_irq_save(flags);
-  event_log_header_init(&event.hdr, EVENT_SEMAPHORE_WAIT);
-  event.lock = (__le32) lock;
-  log_event(&event, sizeof(struct sem_wait_event));
-  local_irq_restore(flags);
+  init_event(struct sem_wait_event, EVENT_SEMAPHORE_WAIT, event);
+  event->lock = (__le32) lock;
+  finish_event();
 #endif
 }
 
