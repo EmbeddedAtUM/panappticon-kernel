@@ -3,12 +3,12 @@
 #include <linux/smp.h>
 #include <linux/cpu.h>
 #include <linux/slab.h>
+#include <linux/proc_fs.h>
 
 #include <eventlogging/events.h>
 
 #include "logging.h"
 #include "buffer.h"
-#include "proc_fs.h"
 #include "idle.h"
 #include "hotcpu.h"
 #include "queue.h"
@@ -19,8 +19,14 @@
 static DEFINE_PER_CPU(struct sbuffer*, cpu_buffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
 
-DEFINE_QUEUE(empty_buffers);
-DEFINE_QUEUE(full_buffers);
+static DEFINE_QUEUE(empty_buffers);
+static DEFINE_QUEUE(full_buffers);
+
+#define PFS_NAME "event_logging"
+#define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR|S_IWOTH|S_IWGRP|S_IWUSR
+static struct proc_dir_entry* el_pfs_entry;
+static DEFINE_MUTEX(pfs_read_lock);
+static struct sbuffer* pfs_read_buffer;
 
 inline static void log_missed_count_event(struct sbuffer* buf) {
   struct missed_count_event event;
@@ -166,13 +172,75 @@ static __init int init_alloc_buffers(void) {
   return 0;
 }
 
-static __init int init_proc_fs(void) {
-  return event_logging_create_pfs();
+/* =========================== Proc FS Methods ============================== */
+
+static int event_logging_read_pfs(char* page, char** start, off_t off, int count, int* eof, void* data) {
+  int err, len;
+
+  len = 0;
+  *start = page;
+  *eof = 1;
+
+  err = mutex_lock_interruptible(&pfs_read_lock);
+  if (err)
+    goto err;
+
+  while (len == 0) {
+    /* Return now-empty buffer to empty queue */
+    if (NULL != pfs_read_buffer && sbuffer_empty(pfs_read_buffer)) {
+      sbuffer_clear(pfs_read_buffer);
+      queue_put(&empty_buffers, pfs_read_buffer);
+      pfs_read_buffer = NULL;
+    }
+
+    /* Get a new buffer from the full queue */
+    if (NULL == pfs_read_buffer) {
+      pfs_read_buffer = queue_take_interruptible(&full_buffers);
+      if (IS_ERR(pfs_read_buffer)) {
+	err = PTR_ERR(pfs_read_buffer);
+	pfs_read_buffer = NULL;
+	goto err;
+      }
+    }
+    
+    /* Read from the buffer */
+    len += sbuffer_read(pfs_read_buffer, page, count);
+  }
+  
+  mutex_unlock(&pfs_read_lock);
+  return len;
+
+  err:
+    mutex_unlock(&pfs_read_lock);
+    return err;
 }
+
+static int event_logging_write_pfs(struct file* file, const char* buffer, unsigned long count, void *data) {
+  if (count > 0)
+    flush_all_cpus();
+  return count;
+}
+
+static __init int event_logging_create_pfs(void) {
+  el_pfs_entry = create_proc_entry(PFS_NAME, PFS_PERMS, NULL);
+  if (!el_pfs_entry)
+    goto err;
+  
+  el_pfs_entry->uid = 0;
+  el_pfs_entry->gid = 0;
+  el_pfs_entry->read_proc = event_logging_read_pfs;
+  el_pfs_entry->write_proc = event_logging_write_pfs;
+  return 0;
+
+ err:
+  return -EINVAL;
+}
+
+/* ========================= Initialization Config ========================== */
 
 early_initcall(init_alloc_buffers);
 early_initcall(init_idle_notifier);
 early_initcall(init_hotcpu_notifier);
-fs_initcall(init_proc_fs);
+fs_initcall(event_logging_create_pfs);
 
 
