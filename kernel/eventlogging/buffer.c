@@ -35,16 +35,15 @@ void sbuffer_clear(struct sbuffer* buf) {
   buf->wp = buf->start;
 }
 
-int sbuffer_avail(struct sbuffer* buf) {
-  return (buf->end - buf->wp);
-}
-
-int sbuffer_write(struct sbuffer* buf, char* page, int count) {
-  if (sbuffer_avail(buf) < count)
-    return 0;
-  memcpy(buf->wp, page, count);
-  buf->wp += count;
-  return count;
+/* Returns NULL if too full */
+void* sbuffer_reserve(struct sbuffer* buf, int len) {
+  void* old_wp = buf->wp;
+  if (buf->wp + len <= buf-> end) {
+    buf->wp += len;
+    return old_wp;
+  } else {
+    return NULL;
+  }
 }
 
 int sbuffer_empty(struct sbuffer* buf) {
