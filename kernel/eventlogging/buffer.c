@@ -46,6 +46,11 @@ void* sbuffer_reserve(struct sbuffer* buf, int len) {
   }
 }
 
+/* Returns the specified number of bytes to the buffer */
+void sbuffer_cancel(struct sbuffer* buf, int len) {
+  buf->wp -= len;
+}
+
 int sbuffer_empty(struct sbuffer* buf) {
   return (buf->rp == buf->wp);
 }
