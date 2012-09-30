@@ -19,6 +19,7 @@ void sbuffer_free(struct sbuffer* buf);
 
 void sbuffer_clear(struct sbuffer* buf);
 void* sbuffer_reserve(struct sbuffer* buf, int len);
+void sbuffer_cancel(struct sbuffer* buf, int len);
 int sbuffer_empty(struct sbuffer* buf); // any data to read?
 int sbuffer_read(struct sbuffer* buf, char* page, int count);
 
