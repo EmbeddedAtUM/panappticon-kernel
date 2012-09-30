@@ -198,10 +198,10 @@ extern void* reserve_event(int len);
   unsigned long flags;							\
   local_irq_save(flags);						\
   header = (typeof(header)) reserve_event(sizeof(*header) + 4 + 4 + sizeof(*name)); \
+  if (header) {								\
   sec = (__le32*) (header+1);						\
   usec = sec + 1;							\
   name = (typeof(name)) (usec + 1);					\
-  if (header) {								\
   do_gettimeofday(&tv);							\
   *sec = tv.tv_sec;							\
   *usec = tv.tv_usec;							\
