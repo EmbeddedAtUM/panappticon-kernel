@@ -19,6 +19,9 @@
 static DEFINE_PER_CPU(struct sbuffer*, cpu_buffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
 
+/* Timestamp from last packet */
+static DEFINE_PER_CPU(struct timeval, last_tv);
+
 static DEFINE_QUEUE(empty_buffers);
 static DEFINE_QUEUE(full_buffers);
 
@@ -30,7 +33,8 @@ static struct sbuffer* pfs_read_buffer;
 
 static void init_new_buffer(void) {
   event_log_sync();
-  event_log_missed_count(&__get_cpu_var(missed_events));
+  if  (__get_cpu_var(missed_events) > 0)
+       event_log_missed_count(&__get_cpu_var(missed_events));
 }
 
 inline static struct sbuffer* __get_new_cpu_buffer(void) {
@@ -79,6 +83,18 @@ void* reserve_event(int len) {
   }
 
   return wp;
+}
+
+void shrink_event(int len) {
+  struct sbuffer* buf;
+  buf = __get_cpu_buffer();
+  if (buf)
+    sbuffer_cancel(buf, len);
+}
+
+/* Returns a reference to the per-cpu timestamp of the last record */
+struct timeval* get_timestamp(void) {
+  return &__get_cpu_var(last_tv);
 }
 
 /*

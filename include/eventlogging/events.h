@@ -57,16 +57,48 @@
 #define EVENT_RESUME_FINISH 78
 
 #define MAX8 ((1 << 7) - 1)
-#define MAX16 ((1 << 14) - 1)
-#define MAX24 ((1 << 22) -1 )
+#define MIN8 (-(1 << 7))
+
+#define MAX16 ((1 << 15) - 1)
+#define MIN16 (-(1 << 15))
+
+#define MAX24 ((1 << 23) - 1)
+#define MIN24 (-(1 << 23))
 
 struct event_hdr {
   __u8 event_type;
-  __u8 cpu : 4;
-  __u8 sec_len : 2;
-  __u8 usec_len : 2;
+  __u8 cpu_tvlen;
   __le16 pid;
 }__attribute__((packed));
+
+#define CPU_MASK = 0xF0
+#define TVLEN_MASK = 0x0F
+
+#define SET_CPU(header, val) header->cpu_tvlen = (header->cpu_tvlen & ~(0xF0)) | ((val) << 4)
+#define GET_CPU(header) ((header->cpu_tvlen & 0xF0) >> 4)
+
+#define SET_TVLEN(header, sec, usec) do {				\
+    if ((sec) == 4)							\
+      header->cpu_tvlen = (header->cpu_tvlen & ~(0x0F)) | ((usec) << 2); \
+    else								\
+      header->cpu_tvlen = (header->cpu_tvlen & ~(0x0F)) | ((sec) << 2) | (usec); \
+  } while(0)
+
+#define GET_SEC_LEN(header) ({				\
+      int __ret;					\
+      if (0 == (header->cpu_tvlen & 0x03))		\
+	__ret = 4;					\
+      else						\
+	__ret = (header->cpu_tvlen & 0x0C) >> 2;	\
+      __ret;						\
+    })
+
+#define GET_USEC_LEN(header) ({			\
+  int __ret = (header->cpu_tvlen & 0x03);	\
+  if (0 == __ret)				\
+    __ret = (header->cpu_tvlen & 0x0C) >> 2;	\
+  __ret;					\
+})
 
 struct sync_log_event {
   char magic[8];
@@ -188,33 +220,82 @@ struct simple_event {
 
 #ifdef CONFIG_EVENT_LOGGING
 extern void* reserve_event(int len);
+extern void shrink_event(int len);
+extern struct timeval* get_timestamp(void);
 
-#define init_event(type, event_type, name)				\
+#define __init_event(type, event_type, name, diff)			\
   struct timeval tv;							\
+  u8 sec_len;								\
+  u8 usec_len;								\
   struct event_hdr* header;						\
-  __le32* sec;								\
-  __le32* usec;								\
+  char* sec;								\
+  char* usec;								\
   type* name;								\
   unsigned long flags;							\
   local_irq_save(flags);						\
-  header = (typeof(header)) reserve_event(sizeof(*header) + 4 + 4 + sizeof(*name)); \
+  header = (typeof(header)) reserve_event(sizeof(*header) + 4 + 3 + sizeof(*name)); \
   if (header) {								\
-  sec = (__le32*) (header+1);						\
-  usec = sec + 1;							\
-  name = (typeof(name)) (usec + 1);					\
-  do_gettimeofday(&tv);							\
-  *sec = tv.tv_sec;							\
-  *usec = tv.tv_usec;							\
-  event_log_header_init((struct event_hdr*) name, 4, 4, event_type)
+  tv = event_log_timestamp(diff);					\
+  if (diff) {								\
+    sec_len = vsize_sec(tv.tv_sec);					\
+    usec_len = vsize_usec(tv.tv_usec);					\
+  } else {								\
+    sec_len = 4;							\
+    usec_len = 3;							\
+  }									\
+  shrink_event(4 + 3 - sec_len - usec_len);				\
+  sec = (char*) (header+1);						\
+  usec = sec + sec_len;							\
+  name = (typeof(name)) (usec + usec_len);				\
+  memcpy(sec, &tv.tv_sec, sec_len);					\
+  memcpy(usec, &tv.tv_usec, usec_len);					\
+  event_log_header_init(header, sec_len, usec_len, event_type)
+
+#define init_event(type, event_type, name) __init_event(type, event_type, name, 1)
 
 #define finish_event() } \
     local_irq_restore(flags)
 
+/* Records the current timestamp and, if diff is true, returns the
+ * time passed since the last timestamp. Otherwise, the recorded current
+ * time is returned.  static inline struct timeval */
+static inline struct timeval event_log_timestamp(int diff) {
+  struct timeval *cur = get_timestamp();
+  struct timeval prev = *cur;
+  do_gettimeofday(cur);
+  if (!diff) 
+    return *cur;
+  prev.tv_sec = cur->tv_sec - prev.tv_sec;
+  prev.tv_usec = cur->tv_usec - prev.tv_usec;
+  return prev;
+}
+
+static inline u8 vsize_usec(long val) {
+  if ((MIN8 <= val) && (val <= MAX8))
+    return 1;
+  else if ((MIN16 <= val) && (val <= MAX16))
+    return 2;
+  else
+    return 3;
+}
+
+static inline u8 vsize_sec(long val) {
+  if (val == 0)
+    return 0;
+  else if ((MIN8 <= val) && (val <= MAX8))
+    return 1;
+  else if ((MIN16 <= val) && (val <= MAX16))
+    return 2;
+  else if ((MIN24 <= val) && (val <= MAX24))
+    return 3;
+  else
+    return 4;
+}
+
 static inline void event_log_header_init(struct event_hdr* event, u8 sec_len, u8 usec_len, u8 type) {
   event->event_type = type;
-  event->cpu = smp_processor_id();
-  event->sec_len = sec_len;
-  event->usec_len = usec_len;
+  SET_CPU(event, smp_processor_id());
+  SET_TVLEN(event, sec_len, usec_len);
   event->pid = current->pid | (in_interrupt() ? 0x8000 : 0);
 }
 
@@ -224,7 +305,7 @@ static inline void event_log_simple(u8 event_type) {
 }
 
 static inline void event_log_sync(void) {
-  init_event(struct sync_log_event, EVENT_SYNC_LOG, event);
+  __init_event(struct sync_log_event, EVENT_SYNC_LOG, event, 0);
   memcpy(&event->magic, EVENT_LOG_MAGIC, 8);
   finish_event();
 }
