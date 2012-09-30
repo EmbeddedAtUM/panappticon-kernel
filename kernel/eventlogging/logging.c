@@ -28,43 +28,18 @@ static struct proc_dir_entry* el_pfs_entry;
 static DEFINE_MUTEX(pfs_read_lock);
 static struct sbuffer* pfs_read_buffer;
 
-inline static void log_missed_count_event(struct sbuffer* buf) {
-  int cnt;
-  struct missed_count_event* event;
-  
-  cnt = __get_cpu_var(missed_events);
-  if (0 == cnt)
-    return;
-
-  event = (struct missed_count_event*) sbuffer_reserve(buf, sizeof(struct missed_count_event));
-  if (!event)
-    return; // Shouldn't happen in new buffer
-
-  event_log_header_init(&event->hdr, EVENT_MISSED_COUNT);
-  event->count = cnt;
-  __get_cpu_var(missed_events) = 0;
-}
-
-inline static void log_sync_event(struct sbuffer* buf) {
-  struct sync_log_event* event;
-
-  event = (struct sync_log_event*) sbuffer_reserve(buf, sizeof(struct sync_log_event));
-  if (!event)
-    return; // Shouldn't happen in new buffer
-
-  event_log_header_init(&event->hdr, EVENT_SYNC_LOG);
-  memcpy(&event->magic, EVENT_LOG_MAGIC, 8);
-}
-
-static void init_new_buffer(struct sbuffer* buf) {
-  log_sync_event(buf);
-  log_missed_count_event(buf);
+static void init_new_buffer(void) {
+  event_log_sync();
+  event_log_missed_count(&__get_cpu_var(missed_events));
 }
 
 inline static struct sbuffer* __get_new_cpu_buffer(void) {
   struct sbuffer* buf = queue_take_try(&empty_buffers);
-  if (NULL != buf)
-    init_new_buffer(buf);
+  if (NULL == buf) 
+    goto out;
+  __get_cpu_var(cpu_buffers) = buf;
+  init_new_buffer();
+ out:
   return buf;
 }
 
@@ -72,7 +47,6 @@ inline static struct sbuffer* __get_cpu_buffer(void) {
   struct sbuffer* buf = __get_cpu_var(cpu_buffers);
   if (NULL == buf) 
     buf = __get_new_cpu_buffer();
-  __get_cpu_var(cpu_buffers) = buf;
   return buf;
 }
 
