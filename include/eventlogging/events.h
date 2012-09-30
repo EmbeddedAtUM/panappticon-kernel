@@ -63,10 +63,9 @@
 struct event_hdr {
   __u8 event_type;
   __u8 cpu : 4;
-  __u8 flags : 4;
+  __u8 sec_len : 2;
+  __u8 usec_len : 2;
   __le16 pid;
-  __le32 tv_sec;
-  __le32 tv_usec;
 }__attribute__((packed));
 
 struct sync_log_event {
@@ -190,29 +189,32 @@ struct simple_event {
 #ifdef CONFIG_EVENT_LOGGING
 extern void* reserve_event(int len);
 
-#define event_data(type, header) (type) (header + 1) 
-
 #define init_event(type, event_type, name)				\
+  struct timeval tv;							\
   struct event_hdr* header;						\
+  __le32* sec;								\
+  __le32* usec;								\
   type* name;								\
   unsigned long flags;							\
   local_irq_save(flags);						\
-  header = (typeof(header)) reserve_event(sizeof(*header) + sizeof(*name)); \
-  name = event_data(typeof(name), header);				\
+  header = (typeof(header)) reserve_event(sizeof(*header) + 4 + 4 + sizeof(*name)); \
+  sec = (__le32*) (header+1);						\
+  usec = sec + 1;							\
+  name = (typeof(name)) (usec + 1);					\
   if (header) {								\
-  event_log_header_init((struct event_hdr*) name, event_type)
+  do_gettimeofday(&tv);							\
+  *sec = tv.tv_sec;							\
+  *usec = tv.tv_usec;							\
+  event_log_header_init((struct event_hdr*) name, 4, 4, event_type)
 
 #define finish_event() } \
     local_irq_restore(flags)
 
-static inline void event_log_header_init(struct event_hdr* event, u8 type) {
-  struct timeval tv;
-  do_gettimeofday(&tv);
-
+static inline void event_log_header_init(struct event_hdr* event, u8 sec_len, u8 usec_len, u8 type) {
   event->event_type = type;
-  event->tv_sec = tv.tv_sec;
-  event->tv_usec = tv.tv_usec;
   event->cpu = smp_processor_id();
+  event->sec_len = sec_len;
+  event->usec_len = usec_len;
   event->pid = current->pid | (in_interrupt() ? 0x8000 : 0);
 }
 
