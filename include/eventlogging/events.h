@@ -56,9 +56,14 @@
 #define EVENT_RESUME 77
 #define EVENT_RESUME_FINISH 78
 
+#define MAX8 ((1 << 7) - 1)
+#define MAX16 ((1 << 14) - 1)
+#define MAX24 ((1 << 22) -1 )
+
 struct event_hdr {
-  __u8  event_type;
-  __u8  cpu;
+  __u8 event_type;
+  __u8 cpu : 4;
+  __u8 flags : 4;
   __le16 pid;
   __le32 tv_sec;
   __le32 tv_usec;
