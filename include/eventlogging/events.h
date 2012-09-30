@@ -70,140 +70,114 @@ struct event_hdr {
 }__attribute__((packed));
 
 struct sync_log_event {
-  struct event_hdr hdr;
   char magic[8];
 }__attribute__((packed));
 
 struct missed_count_event {
-  struct event_hdr hdr;
   __le32 count;
 }__attribute__((packed));
 
 struct context_switch_event {
-  struct event_hdr hdr;
   __le16 old_pid;
   __le16 new_pid;
-  __u8   state;
-  
+  __u8   state;  
 }__attribute__((packed));
 
 struct preempt_tick_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct preempt_wakeup_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct yield_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct hotcpu_event {
-  struct event_hdr hdr;
   __u8 cpu;
 }__attribute__((packed));
 
 struct wake_lock_event {
-  struct event_hdr hdr;
   __le32 lock;
   __le32 timeout;
 }__attribute__((packed));
 
 struct wake_unlock_event {
-  struct event_hdr hdr;
   __le32 lock;
 }__attribute__((packed));
 
 struct suspend_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct idle_start_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct idle_end_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct fork_event {
-  struct event_hdr hdr;
   __le16 pid;
   __le16 tgid;
 }__attribute__((packed));
 
 struct exit_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct thread_name_event {
-  struct event_hdr hdr;
   __u16 pid;
   char comm[16];
 }__attribute__((packed));
 
 struct network_block_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct network_resume_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct waitqueue_wait_event {
-  struct event_hdr hdr;
   __le32 wq;
 }__attribute__((packed));
 
 struct waitqueue_wake_event {
-  struct event_hdr hdr;
   __le32 wq;
 }__attribute__((packed));
 
 struct waitqueue_notify_event {
-  struct event_hdr hdr;
   __le32 wq;
   __le16 pid;
 }__attribute__((packed));
 
 struct mutex_lock_event {
-  struct event_hdr hdr;
   __le32 lock;
 }__attribute__((packed));
 
 struct mutex_wait_event {
-  struct event_hdr hdr;
   __le32 lock;
 }__attribute__((packed));
 
 struct mutex_wake_event {
-  struct event_hdr hdr;
   __le32 lock;
 }__attribute__((packed));
 
 struct mutex_notify_event {
-  struct event_hdr hdr;
   __le32 lock;
   __le16 pid;
 }__attribute__((packed));
 
 struct sem_lock_event {
-  struct event_hdr hdr;
   __le32 lock;
 }__attribute__((packed));
 
 struct sem_wait_event {
-  struct event_hdr hdr;
   __le32 lock;
 }__attribute__((packed));
 
 struct io_block_event {
-  struct event_hdr hdr;
 }__attribute__((packed));
 
 struct io_resume_event {
-  struct event_hdr hdr;
+}__attribute__((packed));
+
+struct simple_event {
 }__attribute__((packed));
 
 #ifdef __KERNEL__
@@ -216,13 +190,17 @@ struct io_resume_event {
 #ifdef CONFIG_EVENT_LOGGING
 extern void* reserve_event(int len);
 
-#define reserve(name) name = (typeof(name)) reserve_event(sizeof(*name))
-#define init_event(type, event_type, name) type* name;	\
-  unsigned long flags;					\
-  local_irq_save(flags);				\
-  reserve(name);					\
-  if (name) {							\
-    event_log_header_init((struct event_hdr*) name, event_type)
+#define event_data(type, header) (type) (header + 1) 
+
+#define init_event(type, event_type, name)				\
+  struct event_hdr* header;						\
+  type* name;								\
+  unsigned long flags;							\
+  local_irq_save(flags);						\
+  header = (typeof(header)) reserve_event(sizeof(*header) + sizeof(*name)); \
+  name = event_data(typeof(name), header);				\
+  if (header) {								\
+  event_log_header_init((struct event_hdr*) name, event_type)
 
 #define finish_event() } \
     local_irq_restore(flags)
@@ -239,9 +217,23 @@ static inline void event_log_header_init(struct event_hdr* event, u8 type) {
 }
 
 static inline void event_log_simple(u8 event_type) {
-  init_event(struct event_hdr, event_type, event);
+  init_event(struct simple_event, event_type, event);
   finish_event();
 }
+
+static inline void event_log_sync(void) {
+  init_event(struct sync_log_event, EVENT_SYNC_LOG, event);
+  memcpy(&event->magic, EVENT_LOG_MAGIC, 8);
+  finish_event();
+}
+
+static inline void event_log_missed_count(int* count) {
+  init_event(struct missed_count_event, EVENT_MISSED_COUNT, event);
+  event->count = *count;
+  *count = 0;
+  finish_event();
+}
+
 #endif
 
 static inline void event_log_context_switch(pid_t old, pid_t new, long state) {
