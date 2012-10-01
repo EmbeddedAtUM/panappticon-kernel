@@ -130,6 +130,14 @@ config EVENT_SEMAPHORE_WAIT
        bool "Log semaphore waits"
        default yes
 
+config EVENT_SEMAPHORE_WAKE
+       bool "Log semaphore wakes"
+       default yes
+
+config EVENT_SEMAPHORE_NOTIFY
+       bool "Log semaphore notifies"
+       default yes
+
 config EVENT_MUTEX_LOCK
        bool "Log mutex locks"
        default no
