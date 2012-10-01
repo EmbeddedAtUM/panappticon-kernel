@@ -109,7 +109,6 @@ struct missed_count_event {
 }__attribute__((packed));
 
 struct context_switch_event {
-  __le16 old_pid;
   __le16 new_pid;
   __u8   state;  
 }__attribute__((packed));
@@ -319,10 +318,9 @@ static inline void event_log_missed_count(int* count) {
 
 #endif
 
-static inline void event_log_context_switch(pid_t old, pid_t new, long state) {
+static inline void event_log_context_switch(pid_t new, long state) {
 #ifdef CONFIG_EVENT_CONTEXT_SWITCH
   init_event(struct context_switch_event, EVENT_CONTEXT_SWITCH, event);
-  event->old_pid = old;
   event->new_pid = new;
   event->state = (__u8) (0x0FF & state);
   finish_event();
