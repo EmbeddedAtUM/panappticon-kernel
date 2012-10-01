@@ -4488,7 +4488,18 @@ static void __wake_up_common(wait_queue_head_t *q, unsigned int mode,
 
 	list_for_each_entry_safe(curr, next, &q->task_list, task_list) {
 		unsigned flags = curr->flags;
-
+		/* the waitqueuentry can be initialized either with
+                 * the default wake function and the private void*
+                 * pointing to the task struct or with a custom wake
+                 * function and the private void* set to NULL.  We are
+                 * only interested in the default wake function (which
+                 * actually wakes a process), so we only log an event
+                 * with when the private void* is non-null.  This also
+                 * makes the casting to (struct task_struct*) safe,
+                 * although future kernels could break this.
+		 */
+		if (curr->private)
+			event_log_waitqueue_notify(q, ((struct task_struct*)curr->private)->pid);
 		if (curr->func(curr, mode, wake_flags, key) &&
 				(flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive)
 			break;
