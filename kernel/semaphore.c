@@ -228,7 +228,6 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 	waiter.up = 0;
 
 	event_log_sem_wait(sem);
-
 	for (;;) {
 		if (signal_pending_state(state, task))
 			goto interrupted;
@@ -238,15 +237,19 @@ static inline int __sched __down_common(struct semaphore *sem, long state,
 		spin_unlock_irq(&sem->lock);
 		timeout = schedule_timeout(timeout);
 		spin_lock_irq(&sem->lock);
-		if (waiter.up)
+		if (waiter.up) {
+			event_log_sem_wake(sem);
 			return 0;
+		}
 	}
 
  timed_out:
+	event_log_sem_wake(sem);
 	list_del(&waiter.list);
 	return -ETIME;
 
  interrupted:
+	event_log_sem_wake(sem);
 	list_del(&waiter.list);
 	return -EINTR;
 }
@@ -277,5 +280,6 @@ static noinline void __sched __up(struct semaphore *sem)
 						struct semaphore_waiter, list);
 	list_del(&waiter->list);
 	waiter->up = 1;
+	event_log_sem_notify(sem, waiter->task->pid);
 	wake_up_process(waiter->task);
 }

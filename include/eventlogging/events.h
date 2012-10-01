@@ -35,6 +35,8 @@
 
 #define EVENT_SEMAPHORE_LOCK 40
 #define EVENT_SEMAPHORE_WAIT 41
+#define EVENT_SEMAPHORE_WAKE 42
+#define EVENT_SEMAPHORE_NOTIFY 43
 
 #define EVENT_MUTEX_LOCK 50
 #define EVENT_MUTEX_WAIT 51
@@ -490,6 +492,18 @@ static inline void event_log_sem_lock(void* lock) {
 static inline void event_log_sem_wait(void* lock) {
 #ifdef CONFIG_EVENT_SEMAPHORE_WAIT
   event_log_general_lock(EVENT_SEMAPHORE_WAIT, lock);
+#endif
+}
+
+static inline void event_log_sem_wake(void* lock) {
+#ifdef CONFIG_EVENT_SEMAPHORE_WAIT
+  event_log_general_lock(EVENT_SEMAPHORE_WAIT, lock);
+#endif
+}
+
+static inline void event_log_sem_notify(void* lock, pid_t pid) {
+#ifdef CONFIG_EVENT_SEMAPHORE_NOTIFY
+  event_log_general_notify(EVENT_SEMAPHORE_NOTIFY, lock, pid);
 #endif
 }
 
