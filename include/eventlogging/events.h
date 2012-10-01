@@ -136,42 +136,13 @@ struct thread_name_event {
   char comm[16];
 }__attribute__((packed));
 
-struct waitqueue_wait_event {
-  __le32 wq;
-}__attribute__((packed));
-
-struct waitqueue_wake_event {
-  __le32 wq;
-}__attribute__((packed));
-
-struct waitqueue_notify_event {
-  __le32 wq;
-  __le16 pid;
-}__attribute__((packed));
-
-struct mutex_lock_event {
+struct general_lock_event {
   __le32 lock;
 }__attribute__((packed));
 
-struct mutex_wait_event {
-  __le32 lock;
-}__attribute__((packed));
-
-struct mutex_wake_event {
-  __le32 lock;
-}__attribute__((packed));
-
-struct mutex_notify_event {
+struct general_notify_event {
   __le32 lock;
   __le16 pid;
-}__attribute__((packed));
-
-struct sem_lock_event {
-  __le32 lock;
-}__attribute__((packed));
-
-struct sem_wait_event {
-  __le32 lock;
 }__attribute__((packed));
 
 struct simple_event {
@@ -280,6 +251,19 @@ static inline void event_log_missed_count(int* count) {
   init_event(struct missed_count_event, EVENT_MISSED_COUNT, event);
   event->count = *count;
   *count = 0;
+  finish_event();
+}
+
+static inline void event_log_general_lock(__u8 event_type, void* lock) {
+  init_event(struct general_lock_event, event_type, event);
+  event->lock = (__le32) lock;
+  finish_event();
+}
+
+static inline void event_log_general_notify(__u8 event_type, void* lock, pid_t pid) {
+  init_event(struct general_notify_event, event_type, event);
+  event->lock = (__le32) lock;
+  event->pid = pid;
   finish_event();
 }
 
@@ -475,50 +459,37 @@ void event_log_waitqueue_notify(void* wq, pid_t pid);
 
 static inline void event_log_mutex_lock(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_LOCK
-  init_event(struct mutex_lock_event, EVENT_MUTEX_LOCK, event);
-  event->lock = (__le32) lock;
-  finish_event();
+  event_log_general_lock(EVENT_MUTEX_LOCK, lock);
 #endif
 }
 
 static inline void event_log_mutex_wait(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_WAIT
-  init_event(struct mutex_wait_event, EVENT_MUTEX_WAIT, event);
-  event->lock = (__le32) lock;
-  finish_event();
+  event_log_general_lock(EVENT_MUTEX_WAIT, lock);
 #endif
 }
 
 static inline void event_log_mutex_wake(void* lock) {
 #ifdef CONFIG_EVENT_MUTEX_WAKE
-  init_event(struct mutex_wake_event, EVENT_MUTEX_WAKE, event);
-  event->lock = (__le32) lock;
-  finish_event();
+  event_log_general_lock(EVENT_MUTEX_WAKE, lock);
 #endif
 }
 
 static inline void event_log_mutex_notify(void* lock, pid_t pid) {
 #ifdef CONFIG_EVENT_MUTEX_NOTIFY
-  init_event(struct mutex_notify_event, EVENT_MUTEX_NOTIFY, event);
-  event->lock = (__le32) lock;
-  event->pid = pid;
-  finish_event();
+  event_log_general_notify(EVENT_MUTEX_NOTIFY, lock, pid);
 #endif
 }
 
 static inline void event_log_sem_lock(void* lock) {
 #ifdef CONFIG_EVENT_SEMAPHORE_LOCK
-  init_event(struct sem_lock_event, EVENT_SEMAPHORE_LOCK, event);
-  event->lock = (__le32) lock;
-  finish_event();
+  event_log_general_lock(EVENT_SEMAPHORE_LOCK, lock);
 #endif
 }
 
 static inline void event_log_sem_wait(void* lock) {
 #ifdef CONFIG_EVENT_SEMAPHORE_WAIT
-  init_event(struct sem_wait_event, EVENT_SEMAPHORE_WAIT, event);
-  event->lock = (__le32) lock;
-  finish_event();
+  event_log_general_lock(EVENT_SEMAPHORE_WAIT, lock);
 #endif
 }
 
