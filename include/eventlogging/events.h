@@ -113,15 +113,6 @@ struct context_switch_event {
   __u8   state;  
 }__attribute__((packed));
 
-struct preempt_tick_event {
-}__attribute__((packed));
-
-struct preempt_wakeup_event {
-}__attribute__((packed));
-
-struct yield_event {
-}__attribute__((packed));
-
 struct hotcpu_event {
   __u8 cpu;
 }__attribute__((packed));
@@ -135,32 +126,14 @@ struct wake_unlock_event {
   __le32 lock;
 }__attribute__((packed));
 
-struct suspend_event {
-}__attribute__((packed));
-
-struct idle_start_event {
-}__attribute__((packed));
-
-struct idle_end_event {
-}__attribute__((packed));
-
 struct fork_event {
   __le16 pid;
   __le16 tgid;
 }__attribute__((packed));
 
-struct exit_event {
-}__attribute__((packed));
-
 struct thread_name_event {
   __u16 pid;
   char comm[16];
-}__attribute__((packed));
-
-struct network_block_event {
-}__attribute__((packed));
-
-struct network_resume_event {
 }__attribute__((packed));
 
 struct waitqueue_wait_event {
@@ -199,12 +172,6 @@ struct sem_lock_event {
 
 struct sem_wait_event {
   __le32 lock;
-}__attribute__((packed));
-
-struct io_block_event {
-}__attribute__((packed));
-
-struct io_resume_event {
 }__attribute__((packed));
 
 struct simple_event {
