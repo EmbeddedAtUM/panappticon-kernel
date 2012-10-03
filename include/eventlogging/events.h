@@ -38,6 +38,10 @@
 #define EVENT_SEMAPHORE_WAKE 42
 #define EVENT_SEMAPHORE_NOTIFY 43
 
+#define EVENT_FUTEX_WAIT 46
+#define EVENT_FUTEX_WAKE 47
+#define EVENT_FUTEX_NOTIFY 48
+
 #define EVENT_MUTEX_LOCK 50
 #define EVENT_MUTEX_WAIT 51
 #define EVENT_MUTEX_WAKE 52
@@ -480,6 +484,24 @@ static inline void event_log_mutex_wake(void* lock) {
 static inline void event_log_mutex_notify(void* lock, pid_t pid) {
 #ifdef CONFIG_EVENT_MUTEX_NOTIFY
   event_log_general_notify(EVENT_MUTEX_NOTIFY, lock, pid);
+#endif
+}
+
+static inline void event_log_futex_wait(void* lock) {
+#ifdef CONFIG_EVENT_FUTEX_WAIT
+  event_log_general_lock(EVENT_FUTEX_WAIT, lock);
+#endif
+}
+
+static inline void event_log_futex_wake(void* lock) {
+#ifdef CONFIG_EVENT_MUTEX_WAKE
+  event_log_general_lock(EVENT_FUTEX_WAKE, lock);
+#endif
+}
+
+static inline void event_log_futex_notify(void* lock, pid_t pid) {
+#ifdef CONFIG_EVENT_FUTEX_NOTIFY
+  event_log_general_notify(EVENT_FUTEX_NOTIFY, lock, pid);
 #endif
 }
 

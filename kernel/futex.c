@@ -63,6 +63,8 @@
 
 #include <asm/futex.h>
 
+#include <eventlogging/events.h>
+
 #include "rtmutex_common.h"
 
 int __read_mostly futex_cmpxchg_enabled;
@@ -836,7 +838,7 @@ static void __unqueue_futex(struct futex_q *q)
  * The hash bucket lock must be held when this is called.
  * Afterwards, the futex_q must not be accessed.
  */
-static void wake_futex(struct futex_q *q)
+static void wake_futex(u32 __user *uaddr, struct futex_q *q)
 {
 	struct task_struct *p = q->task;
 
@@ -859,6 +861,7 @@ static void wake_futex(struct futex_q *q)
 	smp_wmb();
 	q->lock_ptr = NULL;
 
+	event_log_futex_notify(uaddr, p->pid);
 	wake_up_state(p, TASK_NORMAL);
 	put_task_struct(p);
 }
@@ -1001,7 +1004,7 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 			if (!(this->bitset & bitset))
 				continue;
 
-			wake_futex(this);
+			wake_futex(uaddr, this);
 			if (++ret >= nr_wake)
 				break;
 		}
@@ -1075,7 +1078,7 @@ retry_private:
 
 	plist_for_each_entry_safe(this, next, head, list) {
 		if (match_futex (&this->key, &key1)) {
-			wake_futex(this);
+ 			wake_futex(uaddr1, this);
 			if (++ret >= nr_wake)
 				break;
 		}
@@ -1087,7 +1090,7 @@ retry_private:
 		op_ret = 0;
 		plist_for_each_entry_safe(this, next, head, list) {
 			if (match_futex (&this->key, &key2)) {
-				wake_futex(this);
+				wake_futex(uaddr2, this);
 				if (++op_ret >= nr_wake2)
 					break;
 			}
@@ -1397,7 +1400,7 @@ retry_private:
 		 * woken by futex_unlock_pi().
 		 */
 		if (++task_count <= nr_wake && !requeue_pi) {
-			wake_futex(this);
+			wake_futex(uaddr1, this);
 			continue;
 		}
 
@@ -1756,7 +1759,7 @@ out:
  * @q:		the futex_q to queue up on
  * @timeout:	the prepared hrtimer_sleeper, or null for no timeout
  */
-static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
+static void futex_wait_queue_me(u32 __user *uaddr, struct futex_hash_bucket *hb, struct futex_q *q,
 				struct hrtimer_sleeper *timeout)
 {
 	/*
@@ -1785,8 +1788,11 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 		 * flagged for rescheduling. Only call schedule if there
 		 * is no timeout, or if it has yet to expire.
 		 */
-		if (!timeout || timeout->task)
+		if (!timeout || timeout->task) {
+			event_log_futex_wait(uaddr);
 			schedule();
+			event_log_futex_wake(uaddr);
+		}
 	}
 	__set_current_state(TASK_RUNNING);
 }
@@ -1901,7 +1907,7 @@ retry:
 		goto out;
 
 	/* queue_me and wait for wakeup, timeout, or a signal. */
-	futex_wait_queue_me(hb, &q, to);
+	futex_wait_queue_me(uaddr, hb, &q, to);
 
 	/* If we were woken (and unqueued), we succeeded, whatever. */
 	ret = 0;
@@ -2312,7 +2318,7 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
 		goto out_key2;
 
 	/* Queue the futex_q, drop the hb lock, wait for wakeup. */
-	futex_wait_queue_me(hb, &q, to);
+	futex_wait_queue_me(uaddr, hb, &q, to);
 
 	spin_lock(&hb->lock);
 	ret = handle_early_requeue_pi_wakeup(hb, &q, &key2, to);
