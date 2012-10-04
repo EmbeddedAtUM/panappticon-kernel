@@ -4345,9 +4345,14 @@ static inline void sched_submit_work(struct task_struct *tsk)
 asmlinkage void __sched schedule(void)
 {
 	struct task_struct *tsk = current;
-
+	
 	sched_submit_work(tsk);
 	__schedule();
+#ifdef CONFIG_EVENT_LOGGING
+	/* Cannot wake up blocked peekers and takers when logging the
+	   event in context_switch(), so manually poke them here. */
+	poke_queues();
+#endif
 }
 EXPORT_SYMBOL(schedule);
 
