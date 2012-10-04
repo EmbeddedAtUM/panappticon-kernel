@@ -85,6 +85,10 @@ void* reserve_event(int len) {
   return wp;
 }
 
+void poke_queues(void) {
+  queue_poke(&full_buffers);
+}
+
 void shrink_event(int len) {
   struct sbuffer* buf;
   buf = __get_cpu_buffer();
