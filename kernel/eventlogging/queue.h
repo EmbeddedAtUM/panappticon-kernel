@@ -43,6 +43,14 @@ static inline void queue_put(struct queue* queue, struct sbuffer *buf) {
   queue_unlock(queue);
 }
 
+/* Wakes up any blocked peekers or takers if the queue is not empty */
+static inline void queue_poke(struct queue* queue) {
+  queue_lock(queue);
+  if (unlikely(!list_empty(&queue->list)))
+    wake_up_interruptible(&queue->wait);
+  queue_unlock(queue);
+}
+
 static inline struct sbuffer* __queue_peek_try(struct queue* queue) {
   if (!list_empty(&queue->list))
     return list_entry(queue->list.next, struct sbuffer, list);

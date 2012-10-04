@@ -164,6 +164,7 @@ struct simple_event {
 #ifdef CONFIG_EVENT_LOGGING
 extern void* reserve_event(int len);
 extern void shrink_event(int len);
+extern void poke_queues(void);
 extern struct timeval* get_timestamp(void);
 
 #define __init_event(type, event_type, name, diff)			\
@@ -196,7 +197,11 @@ extern struct timeval* get_timestamp(void);
 
 #define init_event(type, event_type, name) __init_event(type, event_type, name, 1)
 
-#define finish_event() } \
+#define finish_event() poke_queues(); \
+  }				      \
+ local_irq_restore(flags)
+
+#define finish_event_no_poke() }      \
     local_irq_restore(flags)
 
 /* Records the current timestamp and, if diff is true, returns the
@@ -247,30 +252,35 @@ static inline void event_log_simple(u8 event_type) {
   finish_event();
 }
 
+static inline void event_log_simple_no_poke(u8 event_type) {
+  init_event(struct simple_event, event_type, event);
+  finish_event_no_poke();
+}
+
 static inline void event_log_sync(void) {
   __init_event(struct sync_log_event, EVENT_SYNC_LOG, event, 0);
   memcpy(&event->magic, EVENT_LOG_MAGIC, 8);
-  finish_event();
+  finish_event_no_poke();
 }
 
 static inline void event_log_missed_count(int* count) {
   init_event(struct missed_count_event, EVENT_MISSED_COUNT, event);
   event->count = *count;
   *count = 0;
-  finish_event();
+  finish_event_no_poke();
 }
 
 static inline void event_log_general_lock(__u8 event_type, void* lock) {
   init_event(struct general_lock_event, event_type, event);
   event->lock = (__le32) lock;
-  finish_event();
+  finish_event_no_poke();
 }
 
 static inline void event_log_general_notify(__u8 event_type, void* lock, pid_t pid) {
   init_event(struct general_notify_event, event_type, event);
   event->lock = (__le32) lock;
   event->pid = pid;
-  finish_event();
+  finish_event_no_poke();
 }
 
 #endif
@@ -280,19 +290,19 @@ static inline void event_log_context_switch(pid_t new, long state) {
   init_event(struct context_switch_event, EVENT_CONTEXT_SWITCH, event);
   event->new_pid = new;
   event->state = (__u8) (0x0FF & state);
-  finish_event();
+  finish_event_no_poke();
 #endif
 }
 
 static inline void event_log_preempt_tick(void) {
 #ifdef CONFIG_EVENT_PREEMPT_TICK
-  event_log_simple(EVENT_PREEMPT_TICK);
+  event_log_simple_no_poke(EVENT_PREEMPT_TICK);
 #endif
 }
 
 static inline void event_log_preempt_wakeup(void) {
 #ifdef CONFIG_EVENT_PREEMPT_WAKEUP
-  event_log_simple(EVENT_PREEMPT_WAKEUP);
+  event_log_simple_no_poke(EVENT_PREEMPT_WAKEUP);
 #endif
 }
 
@@ -342,25 +352,25 @@ static inline void event_log_idle_end(void) {
 
 static inline void event_log_suspend_start(void) {
 #ifdef CONFIG_EVENT_SUSPEND_START
-  event_log_simple(EVENT_SUSPEND_START);
+  event_log_simple_no_poke(EVENT_SUSPEND_START);
 #endif
 }
 
 static inline void event_log_suspend(void) {
 #ifdef CONFIG_EVENT_SUSPEND
-  event_log_simple(EVENT_SUSPEND);
+  event_log_simple_no_poke(EVENT_SUSPEND);
 #endif
 }
 
 static inline void event_log_resume(void) {
 #ifdef CONFIG_EVENT_RESUME
-  event_log_simple(EVENT_RESUME);
+  event_log_simple_no_poke(EVENT_RESUME);
 #endif
 }
 
 static inline void event_log_resume_finish(void) {
 #ifdef CONFIG_EVENT_RESUME_FINISH
-  event_log_simple(EVENT_RESUME_FINISH);
+  event_log_simple_no_poke(EVENT_RESUME_FINISH);
 #endif
 }
 
