@@ -72,4 +72,30 @@ int sbuffer_read(struct sbuffer* buf, char* page, int count) {
   return len;
 }
 
+/* Swaps the memory held by the two buffers */
+void sbuffer_swap(struct sbuffer* buf1, struct sbuffer* buf2) {
+  int order;
+  void *start, *end, *rp, *wp;
+  
+  /* Save values from buf1 */
+  order = buf1->order;
+  start = buf1->start;
+  end = buf1->end;
+  rp = buf1->rp;
+  wp = buf1->wp;
+  
+  /* Move buf2 to buf1 */
+  buf1->order = buf2->order;
+  buf1->start = buf2->start;
+  buf1->end = buf2->end;
+  buf1->rp = buf2->rp;
+  buf1->wp = buf2->wp;
+
+  /* And move buf1 copy to buf2 */
+  buf2->order = order;
+  buf2->start = start;
+  buf2->end = end;
+  buf2->rp = rp;
+  buf2->wp = wp;
+}
 
