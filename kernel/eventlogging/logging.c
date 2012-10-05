@@ -4,6 +4,7 @@
 #include <linux/cpu.h>
 #include <linux/slab.h>
 #include <linux/proc_fs.h>
+#include <linux/lzo.h>
 
 #include <eventlogging/events.h>
 
@@ -24,12 +25,16 @@ static DEFINE_PER_CPU(struct timeval, last_tv);
 
 static DEFINE_QUEUE(empty_buffers);
 static DEFINE_QUEUE(full_buffers);
+static DEFINE_QUEUE(compressed_buffers);
 
 #define PFS_NAME "event_logging"
 #define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR|S_IWOTH|S_IWGRP|S_IWUSR
 static struct proc_dir_entry* el_pfs_entry;
 static DEFINE_MUTEX(pfs_read_lock);
 static struct sbuffer* pfs_read_buffer;
+
+static DEFINE_MUTEX(compress_lock);
+static struct sbuffer* compress_empty_buffer;
 
 static void init_new_buffer(void) {
   event_log_sync();
@@ -85,8 +90,10 @@ void* reserve_event(int len) {
   return wp;
 }
 
+static void schedule_compression(void);
+
 void poke_queues(void) {
-  queue_poke(&full_buffers);
+  schedule_compression();
 }
 
 void shrink_event(int len) {
@@ -171,7 +178,76 @@ static __init int init_alloc_buffers(void) {
     printk("eventlogging: prepare buffer for CPU %d\n", cpu);
   }
 
+  /* Allocate empty buffer for compression */
+  compress_empty_buffer = queue_take_try(&empty_buffers);
+  if (!compress_empty_buffer)
+    printk(KERN_ERR "eventlogging: failed to allocate empty buffer for compression\n");
+
   return 0;
+}
+
+/* ============================= Compression ================================ */
+static char lzo_work_mem[LZO1X_1_MEM_COMPRESS];
+
+static int compress_buffer(struct sbuffer* buf) {
+  int err;
+  u32 compressed_len;
+
+  err = mutex_lock_interruptible(&compress_lock);
+  if (err)
+    return err;
+
+  /* Try to get empty buffer, if one is not already available. This
+     should never happen. */
+  if (!compress_empty_buffer && 
+      !(compress_empty_buffer = queue_take_try(&empty_buffers)))
+    goto out;
+
+  sbuffer_clear(compress_empty_buffer);
+
+  /* Reserve four bytes to record data size */
+  compress_empty_buffer->wp += 4;
+
+  compressed_len = compress_empty_buffer->end - compress_empty_buffer->start;
+  err = lzo1x_1_compress(buf->rp, (buf->wp - buf->rp), compress_empty_buffer->wp, &compressed_len, &lzo_work_mem);
+  if (err) {
+    printk(KERN_ERR "eventlogging: error compressing buffer: %d", err);
+    goto out;
+  }
+  compress_empty_buffer->wp += compressed_len;
+  memcpy(compress_empty_buffer->start, &compressed_len, 4);
+
+  sbuffer_swap(compress_empty_buffer, buf);
+  err = 0;
+
+ out:
+  mutex_unlock(&compress_lock);
+  return err;
+}
+
+static void compress_buffer_func(struct work_struct* work) {
+  int ret;
+  struct sbuffer* buf;
+  
+  buf = container_of(work, struct sbuffer, work);
+  ret = compress_buffer(buf);  
+  if (ret)
+    goto err;
+
+  queue_put(&compressed_buffers, buf);
+  queue_poke(&compressed_buffers);
+  return;
+
+ err:
+  printk("eventlogging: failed to compress buffer: %d", ret);
+}
+
+static void schedule_compression(void) {
+  struct sbuffer* buf;
+  while( (buf = queue_take_try(&full_buffers)) ) {
+    INIT_WORK(&buf->work, compress_buffer_func);
+    schedule_work(&buf->work);
+  }
 }
 
 /* =========================== Proc FS Methods ============================== */
@@ -197,7 +273,7 @@ static int event_logging_read_pfs(char* page, char** start, off_t off, int count
 
     /* Get a new buffer from the full queue */
     if (NULL == pfs_read_buffer) {
-      pfs_read_buffer = queue_take_interruptible(&full_buffers);
+      pfs_read_buffer = queue_take_interruptible(&compressed_buffers);
       if (IS_ERR(pfs_read_buffer)) {
 	err = PTR_ERR(pfs_read_buffer);
 	pfs_read_buffer = NULL;
