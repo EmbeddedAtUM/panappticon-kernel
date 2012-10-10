@@ -5,6 +5,7 @@
 
 menuconfig EVENT_LOGGING
         bool "Event Logging Zhang/Bild"
+	select LZO_COMPRESS
         help
           Event tracing framework for Lide Zhang and David Bild.
 
