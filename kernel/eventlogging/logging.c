@@ -15,7 +15,7 @@
 #include "queue.h"
 
 #define BUFFER_ORDER 10  // 2^10 = 4 MB with 4096 page size
-#define NUM_BUFFERS  32  // 32 * 4 MB = 128 MB total
+#define NUM_BUFFERS   8  // 8 * 4 MB = 32 MB total
 
 static DEFINE_PER_CPU(struct sbuffer*, cpu_buffers);
 static DEFINE_PER_CPU(unsigned int, missed_events);
