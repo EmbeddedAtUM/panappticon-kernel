@@ -23,6 +23,10 @@ config EVENT_CPU_DEAD
        bool "Log when cpu goes offline"
        default yes
 
+config EVENT_CPUFREQ_SET
+       bool "Log when cpu frequency changes"
+       default yes
+
 config EVENT_SUSPEND_START
        bool "Log when a suspend request is issued"
        default yes
