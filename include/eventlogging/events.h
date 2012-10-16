@@ -11,6 +11,7 @@
 #define EVENT_CPU_ONLINE 5
 #define EVENT_CPU_DOWN_PREPARE 6
 #define EVENT_CPU_DEAD 7
+#define EVENT_CPUFREQ_SET 8
 
 #define EVENT_PREEMPT_WAKEUP 9
 #define EVENT_CONTEXT_SWITCH 10
@@ -121,6 +122,12 @@ struct context_switch_event {
 
 struct hotcpu_event {
   __u8 cpu;
+}__attribute__((packed));
+
+struct cpufreq_set_event {
+  __u8 cpu;
+  __le32 old_freq;
+  __le32 new_freq;
 }__attribute__((packed));
 
 struct wake_lock_event {
@@ -335,6 +342,16 @@ static inline void event_log_cpu_down_prepare(unsigned int cpu) {
 static inline void event_log_cpu_dead(unsigned int cpu) {
 #ifdef CONFIG_EVENT_CPU_DEAD
   event_log_hotcpu(cpu, EVENT_CPU_DEAD);
+#endif
+}
+
+static inline void event_log_cpufreq_set(unsigned int cpu, unsigned int old_freq, unsigned int new_freq) {
+#ifdef CONFIG_EVENT_CPUFREQ_SET
+  init_event(struct cpufreq_set_event, EVENT_CPUFREQ_SET, event);
+  event->cpu = cpu;
+  event->old_freq = old_freq;
+  event->new_freq = new_freq;
+  finish_event();
 #endif
 }
 
