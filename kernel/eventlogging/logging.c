@@ -12,6 +12,7 @@
 #include "buffer.h"
 #include "idle.h"
 #include "hotcpu.h"
+#include "cpufreq.h"
 #include "queue.h"
 
 #define BUFFER_ORDER 10  // 2^10 = 4 MB with 4096 page size
@@ -319,6 +320,7 @@ static __init int event_logging_create_pfs(void) {
 early_initcall(init_alloc_buffers);
 early_initcall(init_idle_notifier);
 early_initcall(init_hotcpu_notifier);
+fs_initcall(init_cpufreq_notifier);
 fs_initcall(event_logging_create_pfs);
 
 
