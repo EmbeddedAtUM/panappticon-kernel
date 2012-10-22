@@ -24,6 +24,7 @@ void* sbuffer_reserve(struct sbuffer* buf, int len);
 void sbuffer_cancel(struct sbuffer* buf, int len);
 int sbuffer_empty(struct sbuffer* buf); // any data to read?
 int sbuffer_read(struct sbuffer* buf, char* page, int count);
+void sbuffer_restart_read(struct sbuffer* buf);
 
 /* Swaps the memory held by the two buffers */
 void sbuffer_swap(struct sbuffer* buf1, struct sbuffer* buf2); 

@@ -72,6 +72,10 @@ int sbuffer_read(struct sbuffer* buf, char* page, int count) {
   return len;
 }
 
+void sbuffer_restart_read(struct sbuffer* buf) {
+  buf->rp = buf->start;
+}
+
 /* Swaps the memory held by the two buffers */
 void sbuffer_swap(struct sbuffer* buf1, struct sbuffer* buf2) {
   int order;
