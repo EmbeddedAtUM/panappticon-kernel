@@ -5,6 +5,9 @@
 #include <linux/slab.h>
 #include <linux/proc_fs.h>
 #include <linux/lzo.h>
+#include <linux/string.h>
+
+#include <asm/uaccess.h>
 
 #include <eventlogging/events.h>
 
@@ -29,6 +32,8 @@ static DEFINE_QUEUE(full_buffers);
 static DEFINE_QUEUE(compressed_buffers);
 
 #define PFS_NAME "event_logging"
+#define PFS_COMMAND_LEN 10
+#define PFS_RESTART "restart"
 #define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR|S_IWOTH|S_IWGRP|S_IWUSR
 static struct proc_dir_entry* el_pfs_entry;
 static DEFINE_MUTEX(pfs_read_lock);
@@ -252,6 +257,25 @@ static void schedule_compression(void) {
 }
 
 /* =========================== Proc FS Methods ============================== */
+static int event_logging_read_pfs_restart(void) {
+  int err;
+
+  err = mutex_lock_interruptible(&pfs_read_lock);
+  if (err)
+    goto mutex_err;
+
+  /* If read is incomplete, restart read of this buffer */
+  if (NULL != pfs_read_buffer && !sbuffer_empty(pfs_read_buffer)) {
+    printk(KERN_INFO "eventlogging: restarting read of buffer");
+    sbuffer_restart_read(pfs_read_buffer);
+  }
+
+  mutex_unlock(&pfs_read_lock);
+  return 0;
+
+ mutex_err:
+  return err;
+}
 
 static int event_logging_read_pfs(char* page, char** start, off_t off, int count, int* eof, void* data) {
   int err, len;
@@ -295,9 +319,34 @@ static int event_logging_read_pfs(char* page, char** start, off_t off, int count
 }
 
 static int event_logging_write_pfs(struct file* file, const char* buffer, unsigned long count, void *data) {
-  if (count > 0)
+  int err;
+  char command[PFS_COMMAND_LEN+1];
+
+  if (!count)
+    return 0;
+
+  memset(command, 0, sizeof(command));
+  if (count > PFS_COMMAND_LEN)
+    count = PFS_COMMAND_LEN;
+
+  if ( copy_from_user(command, buffer, count) )
+    return -EFAULT;
+
+  /* Process restart command */
+  if ( 0 == strcmp(command, PFS_RESTART) ) {
+    err = event_logging_read_pfs_restart();
+    if (err)
+      goto err;
+  }
+  /* Process default command */
+  else {
     flush_all_cpus();
+  }
+
   return count;
+
+ err:
+  return err;
 }
 
 static __init int event_logging_create_pfs(void) {
