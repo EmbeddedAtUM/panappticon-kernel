@@ -63,6 +63,11 @@
 #define EVENT_RESUME 77
 #define EVENT_RESUME_FINISH 78
 
+#define EVENT_BINDER_PRODUCE_ONEWAY 90
+#define EVENT_BINDER_PRODUCE_TWOWAY 91
+#define EVENT_BINDER_PRODUCE_REPLY  92
+#define EVENT_BINDER_CONSUME        93
+
 #define MAX8 ((1 << 7) - 1)
 #define MIN8 (-(1 << 7))
 
@@ -156,6 +161,10 @@ struct general_lock_event {
 struct general_notify_event {
   __le32 lock;
   __le16 pid;
+}__attribute__((packed));
+
+struct binder_event {
+  __le32 transaction;
 }__attribute__((packed));
 
 struct simple_event {
@@ -343,6 +352,39 @@ static inline void event_log_cpu_dead(unsigned int cpu) {
 #ifdef CONFIG_EVENT_CPU_DEAD
   event_log_hotcpu(cpu, EVENT_CPU_DEAD);
 #endif
+}
+
+#if defined(CONFIG_EVENT_BINDER_PRODUCE_ONEWAY) || defined(CONFIG_EVENT_BINDER_PRODUCE_TWOWAY) \
+ || defined(CONFIG_EVENT_BINDER_PRODUCE_REPLY) || defined(CONFIG_EVENT_BINDER_CONSUME)
+static inline void event_log_binder(u8 event_type, void* transaction) {
+  init_event(struct binder_event, event_type, event);
+  event->transaction = (__le32) transaction;
+  finish_event();
+}
+#endif
+
+static inline void event_log_binder_produce_oneway(void* transaction) {
+  #ifdef CONFIG_EVENT_BINDER_PRODUCE_ONEWAY
+  event_log_binder(EVENT_BINDER_PRODUCE_ONEWAY, transaction);
+  #endif
+}
+
+static inline void event_log_binder_produce_twoway(void* transaction) {
+  #ifdef CONFIG_EVENT_BINDER_PRODUCE_TWOWAY
+  event_log_binder(EVENT_BINDER_PRODUCE_TWOWAY, transaction);
+  #endif
+}
+
+static inline void event_log_binder_produce_reply(void* transaction) {
+  #ifdef CONFIG_EVENT_BINDER_PRODUCE_REPLY
+  event_log_binder(EVENT_BINDER_PRODUCE_REPLY, transaction);
+  #endif
+}
+
+static inline void event_log_binder_consume(void* transaction) {
+  #ifdef CONFIG_EVENT_BINDER_CONSUME
+  event_log_binder(EVENT_BINDER_CONSUME, transaction);
+  #endif
 }
 
 static inline void event_log_cpufreq_set(unsigned int cpu, unsigned int old_freq, unsigned int new_freq) {
