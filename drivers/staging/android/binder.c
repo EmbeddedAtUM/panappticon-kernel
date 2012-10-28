@@ -34,6 +34,8 @@
 #include <linux/uaccess.h>
 #include <linux/vmalloc.h>
 
+#include <eventlogging/events.h>
+
 #include "binder.h"
 
 static DEFINE_MUTEX(binder_lock);
@@ -1718,11 +1720,13 @@ static void binder_transaction(struct binder_proc *proc,
 	if (reply) {
 		BUG_ON(t->buffer->async_transaction != 0);
 		binder_pop_transaction(target_thread, in_reply_to);
+		event_log_binder_produce_reply(t);
 	} else if (!(t->flags & TF_ONE_WAY)) {
 		BUG_ON(t->buffer->async_transaction != 0);
 		t->need_reply = 1;
 		t->from_parent = thread->transaction_stack;
 		thread->transaction_stack = t;
+		event_log_binder_produce_twoway(t);
 	} else {
 		BUG_ON(target_node == NULL);
 		BUG_ON(t->buffer->async_transaction != 1);
@@ -1731,6 +1735,7 @@ static void binder_transaction(struct binder_proc *proc,
 			target_wait = NULL;
 		} else
 			target_node->has_async_transaction = 1;
+		event_log_binder_produce_oneway(t);
 	}
 	t->work.type = BINDER_WORK_TRANSACTION;
 	list_add_tail(&t->work.entry, target_list);
@@ -1738,6 +1743,7 @@ static void binder_transaction(struct binder_proc *proc,
 	list_add_tail(&tcomplete->entry, &thread->todo);
 	if (target_wait)
 		wake_up_interruptible(target_wait);
+
 	return;
 
 err_get_unused_fd_failed:
@@ -2458,6 +2464,7 @@ retry:
 			     t->buffer->data_size, t->buffer->offsets_size,
 			     tr.data.ptr.buffer, tr.data.ptr.offsets);
 
+		event_log_binder_consume(t);
 		list_del(&t->work.entry);
 		t->buffer->allow_user_free = 1;
 		if (cmd == BR_TRANSACTION && !(t->flags & TF_ONE_WAY)) {
