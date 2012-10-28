@@ -330,7 +330,7 @@ static inline void event_log_yield(void) {
 
 #if defined(CONFIG_EVENT_CPU_ONLINE) || defined(CONFIG_EVENT_CPU_DEAD) || defined(CONFIG_EVENT_CPU_DOWN_PREPARE)
 static inline void event_log_hotcpu(unsigned int cpu, u8 event_type) {
-  init_event(struct hotcpu_event, EVENT_CPU_ONLINE, event);
+  init_event(struct hotcpu_event, event_type, event);
   event->cpu = cpu;
   finish_event();
 }
