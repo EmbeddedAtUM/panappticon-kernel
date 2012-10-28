@@ -27,6 +27,22 @@ config EVENT_CPUFREQ_SET
        bool "Log when cpu frequency changes"
        default yes
 
+config EVENT_BINDER_PRODUCE_ONEWAY
+       bool "Log when a one-way binder transaction is submitted"
+       default yes
+
+config EVENT_BINDER_PRODUCE_TWOWAY
+       bool "Log when a two-way binder transaction is submitted"
+       default yes
+
+config EVENT_BINDER_PRODUCE_REPLY
+       bool "Log when a reply transaction is submitted"
+       default yes
+
+config EVENT_BINDER_CONSUME
+       bool "Log when a  binder transaction is processed"
+       default yes
+
 config EVENT_SUSPEND_START
        bool "Log when a suspend request is issued"
        default yes
