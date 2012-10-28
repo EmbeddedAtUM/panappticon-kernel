@@ -329,7 +329,7 @@ static inline void event_log_yield(void) {
 }
 
 #if defined(CONFIG_EVENT_CPU_ONLINE) || defined(CONFIG_EVENT_CPU_DEAD) || defined(CONFIG_EVENT_CPU_DOWN_PREPARE)
-static inline void event_log_hotcpu(unsigned int cpu, u8 event_type) {
+static inline void event_log_hotcpu(u8 event_type, unsigned int cpu) {
   init_event(struct hotcpu_event, event_type, event);
   event->cpu = cpu;
   finish_event();
@@ -338,19 +338,19 @@ static inline void event_log_hotcpu(unsigned int cpu, u8 event_type) {
 
 static inline void event_log_cpu_online(unsigned int cpu) {
 #ifdef CONFIG_EVENT_CPU_ONLINE
-  event_log_hotcpu(cpu, EVENT_CPU_ONLINE);
+  event_log_hotcpu(EVENT_CPU_ONLINE, cpu);
 #endif
 }
 
 static inline void event_log_cpu_down_prepare(unsigned int cpu) {
 #ifdef CONFIG_EVENT_CPU_DOWN_PREPARE
-  event_log_hotcpu(cpu, EVENT_CPU_DOWN_PREPARE);
+  event_log_hotcpu(EVENT_CPU_DOWN_PREPARE, cpu);
 #endif
 }
 
 static inline void event_log_cpu_dead(unsigned int cpu) {
 #ifdef CONFIG_EVENT_CPU_DEAD
-  event_log_hotcpu(cpu, EVENT_CPU_DEAD);
+  event_log_hotcpu(EVENT_CPU_DEAD, cpu);
 #endif
 }
 
