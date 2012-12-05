@@ -68,6 +68,12 @@
 #define EVENT_BINDER_PRODUCE_REPLY  92
 #define EVENT_BINDER_CONSUME        93
 
+#define EVENT_CPUFREQ_BOOST 100
+#define EVENT_CPUFREQ_WAKE_UP 101
+#define EVENT_CPUFREQ_MOD_TIMER 102
+#define EVENT_CPUFREQ_DEL_TIMER 103
+#define EVENT_CPUFREQ_TIMER 104
+
 #define MAX8 ((1 << 7) - 1)
 #define MIN8 (-(1 << 7))
 
@@ -165,6 +171,15 @@ struct general_notify_event {
 
 struct binder_event {
   __le32 transaction;
+}__attribute__((packed));
+
+struct cpufreq_mod_timer_event {
+  __u8 cpu;
+  __u32 microseconds;
+}__attribute__((packed));
+
+struct cpufreq_timer_event {
+  __u8 cpu;
 }__attribute__((packed));
 
 struct simple_event {
@@ -595,6 +610,43 @@ static inline void event_log_sem_wake(void* lock) {
 static inline void event_log_sem_notify(void* lock, pid_t pid) {
 #ifdef CONFIG_EVENT_SEMAPHORE_NOTIFY
   event_log_general_notify(EVENT_SEMAPHORE_NOTIFY, lock, pid);
+#endif
+}
+
+static inline void event_log_cpufreq_boost(void) {
+#ifdef CONFIG_EVENT_CPUFREQ_BOOST
+  event_log_simple(EVENT_CPUFREQ_BOOST);
+#endif
+}
+
+static inline void event_log_cpufreq_wake_up(void) {
+#ifdef CONFIG_EVENT_CPUFREQ_WAKE_UP
+  event_log_simple(EVENT_CPUFREQ_WAKE_UP);
+#endif
+}
+
+static inline void event_log_cpufreq_mod_timer(unsigned int cpu, unsigned int microseconds) {
+#ifdef CONFIG_EVENT_CPUFREQ_MOD_TIMER
+  init_event(struct cpufreq_mod_timer_event, EVENT_CPUFREQ_MOD_TIMER, event);
+  event->cpu = cpu;
+  event->microseconds = microseconds;
+  finish_event(); 
+#endif
+}
+
+static inline void event_log_cpufreq_del_timer(unsigned int cpu) {
+#ifdef CONFIG_EVENT_CPUFREQ_DEL_TIMER
+  init_event(struct cpufreq_timer_event, EVENT_CPUFREQ_DEL_TIMER, event);
+  event->cpu = cpu;
+  finish_event(); 
+#endif
+}
+
+static inline void event_log_cpufreq_timer(unsigned int cpu) {
+#ifdef CONFIG_EVENT_CPUFREQ_TIMER
+  init_event(struct cpufreq_timer_event, EVENT_CPUFREQ_TIMER, event);
+  event->cpu = cpu;
+  finish_event(); 
 #endif
 }
 
