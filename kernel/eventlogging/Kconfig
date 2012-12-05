@@ -191,5 +191,25 @@ config EVENT_THREAD_NAME
        bool "Log when a process name is changed"
        default yes
 
+config EVENT_CPUFREQ_BOOST
+       bool "Log when boost is called, presumably after a input event"
+       default yes
+
+config EVENT_CPUFREQ_WAKE_UP
+       bool "Log when thread kinteractiveup is woken up"
+       default yes
+
+config EVENT_CPUFREQ_MOD_TIMER
+       bool "Log when governor time is set"
+       default yes
+
+config EVENT_CPUFREQ_DEL_TIMER
+	bool "Log when governor timer is deleted"
+	default yes
+
+config EVENT_CPUFREQ_TIMER
+       bool "Log when governor timer callback is executed"
+       default yes
+
 endif
 
