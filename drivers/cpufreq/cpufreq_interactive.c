@@ -33,6 +33,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/cpufreq_interactive.h>
 
+#include <eventlogging/events.h>
+
 static atomic_t active_count = ATOMIC_INIT(0);
 
 struct cpufreq_interactive_cpuinfo {
@@ -134,6 +136,8 @@ static void cpufreq_interactive_timer(unsigned long data)
 
 	if (!pcpu->governor_enabled)
 		goto exit;
+
+	event_log_cpufreq_timer(data);
 
 	/*
 	 * Once pcpu->timer_run_time is updated to >= pcpu->idle_exit_time,
@@ -267,6 +271,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 	spin_lock_irqsave(&speedchange_cpumask_lock, flags);
 	cpumask_set_cpu(data, &speedchange_cpumask);
 	spin_unlock_irqrestore(&speedchange_cpumask_lock, flags);
+	event_log_cpufreq_wake_up();
 	wake_up_process(speedchange_task);
 
 rearm_if_notmax:
@@ -295,6 +300,7 @@ rearm:
 
 		pcpu->time_in_idle = get_cpu_idle_time_us(
 			data, &pcpu->idle_exit_time);
+		event_log_cpufreq_mod_timer(pcpu->cpu_timer.data, timer_rate);
 		mod_timer(&pcpu->cpu_timer,
 			  jiffies + usecs_to_jiffies(timer_rate));
 	}
@@ -330,6 +336,7 @@ static void cpufreq_interactive_idle_start(void)
 			pcpu->time_in_idle = get_cpu_idle_time_us(
 				smp_processor_id(), &pcpu->idle_exit_time);
 			pcpu->timer_idlecancel = 0;
+			event_log_cpufreq_mod_timer(pcpu->cpu_timer.data, timer_rate);
 			mod_timer(&pcpu->cpu_timer,
 				  jiffies + usecs_to_jiffies(timer_rate));
 		}
@@ -342,6 +349,7 @@ static void cpufreq_interactive_idle_start(void)
 		 * CPU didn't go busy; we'll recheck things upon idle exit.
 		 */
 		if (pending && pcpu->timer_idlecancel) {
+			event_log_cpufreq_del_timer(pcpu->cpu_timer.data);
 			del_timer(&pcpu->cpu_timer);
 			/*
 			 * Ensure last timer run time is after current idle
@@ -384,6 +392,7 @@ static void cpufreq_interactive_idle_end(void)
 			get_cpu_idle_time_us(smp_processor_id(),
 					     &pcpu->idle_exit_time);
 		pcpu->timer_idlecancel = 0;
+		event_log_cpufreq_mod_timer(pcpu->cpu_timer.data, timer_rate);
 		mod_timer(&pcpu->cpu_timer,
 			  jiffies + usecs_to_jiffies(timer_rate));
 	}
@@ -457,6 +466,8 @@ static void cpufreq_interactive_boost(void)
 	unsigned long flags;
 	struct cpufreq_interactive_cpuinfo *pcpu;
 
+	event_log_cpufreq_boost();
+
 	spin_lock_irqsave(&speedchange_cpumask_lock, flags);
 
 	for_each_online_cpu(i) {
@@ -483,6 +494,7 @@ static void cpufreq_interactive_boost(void)
 	spin_unlock_irqrestore(&speedchange_cpumask_lock, flags);
 
 	if (anyboost)
+		event_log_cpufreq_wake_up();
 		wake_up_process(speedchange_task);
 }
 
@@ -747,6 +759,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu = &per_cpu(cpuinfo, j);
 			pcpu->governor_enabled = 0;
 			smp_wmb();
+			event_log_cpufreq_del_timer(pcpu->cpu_timer.data);
 			del_timer_sync(&pcpu->cpu_timer);
 
 			/*
