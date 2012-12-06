@@ -34,6 +34,7 @@ static DEFINE_QUEUE(compressed_buffers);
 #define PFS_NAME "event_logging"
 #define PFS_COMMAND_LEN 10
 #define PFS_RESTART "restart"
+#define PFS_CLEAR "clear"
 #define PFS_PERMS S_IFREG|S_IROTH|S_IRGRP|S_IRUSR|S_IWOTH|S_IWGRP|S_IWUSR
 static struct proc_dir_entry* el_pfs_entry;
 static DEFINE_MUTEX(pfs_read_lock);
@@ -277,6 +278,57 @@ static int event_logging_read_pfs_restart(void) {
   return err;
 }
 
+/**
+ * Flush the current buffers and then remove all pending,
+ * unread compressed buffers.
+ */
+static int event_logging_read_pfs_clear(void) {
+  int err;
+  struct sbuffer* buf;
+  int cnt = 0;
+
+  err = mutex_lock_interruptible(&pfs_read_lock);
+  if (err)
+    goto mutex_err;
+
+  /* Flush all cpus */
+  flush_all_cpus();
+
+  /* Remove all from full buffers queue. */
+  /* TODO: This removal races with the poke_queues() method, so the
+   * buffer might still sneak into a compression task and then onto
+   * the compressed buffers queue.  It's unlikely so I haven't fixed
+   * that yet.
+   */
+  while( (buf = queue_take_try(&full_buffers)) ) {
+    ++cnt;
+    sbuffer_clear(buf);
+    queue_put(&empty_buffers, buf);
+  }
+
+  /* Return buffer currently being read to empty queue*/ 
+  if (NULL != pfs_read_buffer) {
+    ++cnt;
+    sbuffer_clear(pfs_read_buffer);
+    queue_put(&empty_buffers, pfs_read_buffer);
+    pfs_read_buffer = NULL;
+  }
+
+  /* Remove all from compressed buffers queue */
+  while ( (buf = queue_take_try(&compressed_buffers)) ) {
+    ++cnt;
+    sbuffer_clear(buf);
+    queue_put(&empty_buffers, buf);
+  }
+  printk(KERN_INFO "eventlogging: cleared %d unread buffers", cnt);
+
+  mutex_unlock(&pfs_read_lock);
+  return 0;
+
+ mutex_err:
+  return err;
+}
+
 static int event_logging_read_pfs(char* page, char** start, off_t off, int count, int* eof, void* data) {
   int err, len;
 
@@ -335,6 +387,12 @@ static int event_logging_write_pfs(struct file* file, const char* buffer, unsign
   /* Process restart command */
   if ( 0 == strcmp(command, PFS_RESTART) ) {
     err = event_logging_read_pfs_restart();
+    if (err)
+      goto err;
+  }
+  /* Process clear command */
+  else if (0 == strcmp(command, PFS_CLEAR) ) {
+    err = event_logging_read_pfs_clear();
     if (err)
       goto err;
   }
